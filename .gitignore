@@ -7,3 +7,4 @@ venv/
 node_modules/
 .next/
 *.egg-info/
+.claude/settings.local.json
