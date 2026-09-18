@@ -1,0 +1,42 @@
+:root {
+  --azul: #000056;
+  --azul-soft: #e4e4f0;
+  --cafe: #af8235;
+  --cafe-soft: #f3e7d2;
+  --amarillo: #f0d579;
+  --amarillo-ink: #5c4a08;
+  --amarillo-soft: #fbf3dc;
+  --gris: #504d4c;
+  --bg: #f5f5f7;
+  --surface: #ffffff;
+  --border: #d8d7de;
+  --text: #1b1a1f;
+  --text-muted: #5b5960;
+  --danger: #b3261e;
+  --danger-soft: #fbe4e2;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-plex-sans), system-ui, sans-serif;
+}
+
+code,
+.mono {
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
+}
+
+a {
+  color: var(--azul);
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+}
