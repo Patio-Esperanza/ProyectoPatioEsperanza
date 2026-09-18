@@ -53,3 +53,25 @@ export async function login(username: string, password: string): Promise<TokenRe
   const body = new URLSearchParams({ username, password });
   return request<TokenResponse>("/api/auth/login", { method: "POST", body });
 }
+
+export interface Patio {
+  id: string;
+  nombre: string;
+  codigo: string;
+  activo: boolean;
+}
+
+export async function listPatios(token: string): Promise<Patio[]> {
+  return request<Patio[]>("/api/patios", { token });
+}
+
+export async function createPatio(
+  token: string,
+  payload: { nombre: string; codigo: string }
+): Promise<Patio> {
+  return request<Patio>("/api/patios", {
+    method: "POST",
+    token,
+    body: JSON.stringify(payload),
+  });
+}

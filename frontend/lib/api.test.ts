@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { login, ApiError } from "./api";
+import { login, ApiError, listPatios, createPatio, type Patio } from "./api";
 
 const fetchMock = vi.fn();
 
@@ -41,5 +41,35 @@ describe("login", () => {
 
     await expect(login("admin@patio.mx", "mala")).rejects.toThrow(ApiError);
     await expect(login("admin@patio.mx", "mala")).rejects.toThrow("Credenciales inválidas");
+  });
+});
+
+describe("listPatios", () => {
+  it("sends the bearer token and returns the list", async () => {
+    const patios: Patio[] = [{ id: "1", nombre: "Patio Norte", codigo: "PN", activo: true }];
+    fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => patios });
+
+    const result = await listPatios("token-123");
+
+    expect(result).toEqual(patios);
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toContain("/api/patios");
+    expect(options.headers.Authorization).toBe("Bearer token-123");
+  });
+});
+
+describe("createPatio", () => {
+  it("posts the payload as JSON with the bearer token", async () => {
+    const creado: Patio = { id: "2", nombre: "Patio Sur", codigo: "PS", activo: true };
+    fetchMock.mockResolvedValue({ ok: true, status: 201, json: async () => creado });
+
+    const result = await createPatio("token-123", { nombre: "Patio Sur", codigo: "PS" });
+
+    expect(result).toEqual(creado);
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toContain("/api/patios");
+    expect(options.method).toBe("POST");
+    expect(options.headers["Content-Type"]).toBe("application/json");
+    expect(JSON.parse(options.body as string)).toEqual({ nombre: "Patio Sur", codigo: "PS" });
   });
 });
