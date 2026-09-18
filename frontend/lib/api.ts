@@ -122,3 +122,29 @@ export async function createContenedor(
 export async function getContenedor(token: string, id: string): Promise<Contenedor> {
   return request<Contenedor>(`/api/contenedores/${id}`, { token });
 }
+
+export type TipoMovimiento = "ingreso" | "reubicacion" | "servicio" | "salida";
+
+export interface Movimiento {
+  id: string;
+  contenedor_id: string;
+  ubicacion_destino_id: string | null;
+  tipo: TipoMovimiento;
+}
+
+export async function crearMovimiento(
+  token: string,
+  payload: {
+    contenedor_id: string;
+    ubicacion_destino_id: string;
+    tipo: TipoMovimiento;
+    override_manual?: boolean;
+    motivo_override?: string;
+  }
+): Promise<Movimiento> {
+  return request<Movimiento>("/api/movimientos", {
+    method: "POST",
+    token,
+    body: JSON.stringify(payload),
+  });
+}

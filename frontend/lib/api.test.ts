@@ -8,6 +8,8 @@ import {
   createContenedor,
   getContenedor,
   type Contenedor,
+  crearMovimiento,
+  type Movimiento,
 } from "./api";
 
 const fetchMock = vi.fn();
@@ -121,5 +123,28 @@ describe("getContenedor", () => {
     expect(result).toEqual(CONTENEDOR);
     const [url] = fetchMock.mock.calls[0];
     expect(url).toContain("/api/contenedores/c1");
+  });
+});
+
+describe("crearMovimiento", () => {
+  it("posts the payload and returns the movimiento", async () => {
+    const movimiento: Movimiento = {
+      id: "m1",
+      contenedor_id: "c1",
+      ubicacion_destino_id: "u1",
+      tipo: "ingreso",
+    };
+    fetchMock.mockResolvedValue({ ok: true, status: 201, json: async () => movimiento });
+
+    const result = await crearMovimiento("token-123", {
+      contenedor_id: "c1",
+      ubicacion_destino_id: "u1",
+      tipo: "ingreso",
+    });
+
+    expect(result).toEqual(movimiento);
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toContain("/api/movimientos");
+    expect(options.method).toBe("POST");
   });
 });
