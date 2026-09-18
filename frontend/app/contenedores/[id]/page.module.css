@@ -1,0 +1,32 @@
+.main {
+  max-width: 480px;
+  margin: 32px auto;
+  padding: 0 20px;
+}
+
+.detalle {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.detalle dt {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+}
+
+.detalle dd {
+  margin: 0;
+}
+
+.error {
+  color: var(--danger);
+  background: var(--danger-soft);
+  padding: 8px 10px;
+  border-radius: 6px;
+}

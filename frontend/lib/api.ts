@@ -75,3 +75,50 @@ export async function createPatio(
     body: JSON.stringify(payload),
   });
 }
+
+export type TipoContenedor = "lleno" | "vacio";
+export type TamanoContenedor = "20" | "40" | "45";
+export type EstadoContenedor =
+  | "solicitud_ingreso"
+  | "qr_ingreso_emitido"
+  | "en_porteria"
+  | "ingresado"
+  | "ubicado"
+  | "en_estadia"
+  | "en_servicio_especial"
+  | "solicitud_salida"
+  | "qr_salida_emitido"
+  | "en_porteria_salida"
+  | "despachado"
+  | "rechazado";
+
+export interface Contenedor {
+  id: string;
+  numero_contenedor: string;
+  tipo: TipoContenedor;
+  tamano: TamanoContenedor;
+  patio_id: string;
+  estado: EstadoContenedor;
+  peso_kg: number;
+}
+
+export async function createContenedor(
+  token: string,
+  payload: {
+    numero_contenedor: string;
+    tipo: TipoContenedor;
+    tamano: TamanoContenedor;
+    patio_id: string;
+    peso_kg: number;
+  }
+): Promise<Contenedor> {
+  return request<Contenedor>("/api/contenedores", {
+    method: "POST",
+    token,
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getContenedor(token: string, id: string): Promise<Contenedor> {
+  return request<Contenedor>(`/api/contenedores/${id}`, { token });
+}
