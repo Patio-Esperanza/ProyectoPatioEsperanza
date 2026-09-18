@@ -165,3 +165,35 @@ export async function sugerirUbicacion(
     body: JSON.stringify(payload),
   });
 }
+
+export type RolUsuario = "operador" | "supervisor" | "admin" | "guardia" | "despachador";
+
+export interface Usuario {
+  id: string;
+  nombre: string | null;
+  email: string;
+  tipo: RolUsuario;
+  activo: boolean;
+  patios: Patio[];
+}
+
+export async function listUsuarios(token: string): Promise<Usuario[]> {
+  return request<Usuario[]>("/api/usuarios", { token });
+}
+
+export async function createUsuario(
+  token: string,
+  payload: {
+    nombre: string;
+    email: string;
+    password: string;
+    tipo: RolUsuario;
+    patio_ids: string[];
+  }
+): Promise<Usuario> {
+  return request<Usuario>("/api/usuarios", {
+    method: "POST",
+    token,
+    body: JSON.stringify(payload),
+  });
+}

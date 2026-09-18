@@ -12,6 +12,9 @@ import {
   type Movimiento,
   sugerirUbicacion,
   type SugerenciaUbicacion,
+  listUsuarios,
+  createUsuario,
+  type Usuario,
 } from "./api";
 
 const fetchMock = vi.fn();
@@ -170,5 +173,53 @@ describe("sugerirUbicacion", () => {
     const [url, options] = fetchMock.mock.calls[0];
     expect(url).toContain("/api/ubicaciones/sugerir");
     expect(options.method).toBe("POST");
+  });
+});
+
+const USUARIO: Usuario = {
+  id: "u1",
+  nombre: "Juan Operador",
+  email: "juan@patio.mx",
+  tipo: "operador",
+  activo: true,
+  patios: [{ id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true }],
+};
+
+describe("listUsuarios", () => {
+  it("sends the bearer token and returns the list", async () => {
+    fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => [USUARIO] });
+
+    const result = await listUsuarios("token-123");
+
+    expect(result).toEqual([USUARIO]);
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toContain("/api/usuarios");
+    expect(options.headers.Authorization).toBe("Bearer token-123");
+  });
+});
+
+describe("createUsuario", () => {
+  it("posts the payload as JSON with the bearer token", async () => {
+    fetchMock.mockResolvedValue({ ok: true, status: 201, json: async () => USUARIO });
+
+    const result = await createUsuario("token-123", {
+      nombre: "Juan Operador",
+      email: "juan@patio.mx",
+      password: "clave1234",
+      tipo: "operador",
+      patio_ids: ["p1"],
+    });
+
+    expect(result).toEqual(USUARIO);
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toContain("/api/usuarios");
+    expect(options.method).toBe("POST");
+    expect(JSON.parse(options.body as string)).toEqual({
+      nombre: "Juan Operador",
+      email: "juan@patio.mx",
+      password: "clave1234",
+      tipo: "operador",
+      patio_ids: ["p1"],
+    });
   });
 });
