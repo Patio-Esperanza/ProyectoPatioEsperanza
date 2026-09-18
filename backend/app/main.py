@@ -2,7 +2,7 @@ from fastapi import Depends, FastAPI
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.routes import auth, contenedores, patios
+from app.api.routes import auth, contenedores, movimientos, patios
 from app.db import get_db
 
 app = FastAPI(title="Patio Esperanza API")
@@ -22,3 +22,4 @@ async def health_db(db: AsyncSession = Depends(get_db)) -> dict[str, str]:
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(patios.router, prefix="/api/patios", tags=["patios"])
 app.include_router(contenedores.router, prefix="/api/contenedores", tags=["contenedores"])
+app.include_router(movimientos.router, prefix="/api/movimientos", tags=["movimientos"])
