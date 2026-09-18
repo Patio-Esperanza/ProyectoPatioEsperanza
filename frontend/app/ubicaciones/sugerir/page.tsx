@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
+import { PatioSelect } from "@/components/PatioSelect";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError, sugerirUbicacion, type SugerenciaUbicacion } from "@/lib/api";
 import styles from "./page.module.css";
@@ -50,8 +51,8 @@ function SugerirUbicacionContent() {
         </p>
       )}
       <form className={styles.form} onSubmit={handleSubmit}>
-        <label htmlFor="patio_id">ID de patio</label>
-        <input id="patio_id" value={patioId} onChange={(e) => setPatioId(e.target.value)} required />
+        <label htmlFor="patio_id">Patio</label>
+        <PatioSelect id="patio_id" value={patioId} onChange={setPatioId} />
 
         <label htmlFor="contenedor_id">ID de contenedor</label>
         <input
