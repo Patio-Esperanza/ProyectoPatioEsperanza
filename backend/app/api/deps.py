@@ -52,3 +52,17 @@ def require_roles(*roles: RolUsuario):
         return user
 
     return dependency
+
+
+from sqlalchemy import text
+
+
+async def get_scoped_db(
+    user: CurrentUser = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+) -> AsyncSession:
+    await db.execute(text("SELECT set_config('app.rol', :rol, true)"), {"rol": user.rol.value})
+    await db.execute(
+        text("SELECT set_config('app.patios_asignados', :patios, true)"),
+        {"patios": ",".join(str(p) for p in user.patios)},
+    )
+    return db

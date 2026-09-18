@@ -10,8 +10,8 @@ from app.models.usuario import Usuario
 _USUARIO_ID = "00000000-0000-0000-0000-000000000001"
 
 
-def _token(rol: RolUsuario) -> str:
-    return create_access_token(_USUARIO_ID, rol.value, [], 60)
+def _token(rol: RolUsuario, patios: list[str] | None = None) -> str:
+    return create_access_token(_USUARIO_ID, rol.value, patios or [], 60)
 
 
 async def _crear_usuario_autenticado(db_session) -> None:
@@ -58,7 +58,7 @@ async def test_registrar_movimiento_ubica_contenedor(client, db_session):
     db_session.add(ubicacion)
     await db_session.commit()
 
-    op_token = _token(RolUsuario.OPERADOR)
+    op_token = _token(RolUsuario.OPERADOR, patios=[patio["id"]])
     contenedor_resp = await client.post(
         "/api/contenedores",
         json={

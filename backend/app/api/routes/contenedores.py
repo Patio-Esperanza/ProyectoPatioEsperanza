@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, get_current_user, require_roles
+from app.api.deps import CurrentUser, get_current_user, get_scoped_db, require_roles
 from app.core.auditoria import registrar_auditoria
 from app.db import get_db
 from app.models.contenedor import Contenedor
@@ -52,7 +52,7 @@ async def crear_contenedor(
 @router.get("/{contenedor_id}", response_model=ContenedorOut)
 async def obtener_contenedor(
     contenedor_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_scoped_db),
     user: CurrentUser = Depends(get_current_user),
 ) -> Contenedor:
     result = await db.execute(select(Contenedor).where(Contenedor.id == contenedor_id))
