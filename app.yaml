@@ -1,0 +1,196 @@
+name: cy-container-yard
+region: sfo
+
+# ============================================================
+# APP-LEVEL ENVIRONMENT VARIABLES (compartidas por todos los componentes)
+# ============================================================
+envs:
+  - key: APP_ENV
+    value: production
+    scope: RUN_TIME
+  - key: TZ
+    value: America/Mexico_City
+    scope: RUN_TIME
+  - key: PORTAL_URL
+    value: "https://portal.patiolaesperanza.com.mx"
+    scope: RUN_TIME
+  - key: QR_EXPIRATION_MINUTES
+    value: "240"
+    scope: RUN_TIME
+  - key: JWT_SECRET
+    value: "CAMBIAR_POR_SECRETO_LARGO"
+    scope: RUN_TIME
+    type: SECRET
+  - key: HMAC_QR_SECRET
+    value: "CAMBIAR_POR_SECRETO_LARGO"
+    scope: RUN_TIME
+    type: SECRET
+  - key: API_KEY_SOCIOS
+    value: "CAMBIAR_POR_API_KEY"
+    scope: RUN_TIME
+    type: SECRET
+  # Twilio (notificaciones)
+  - key: TWILIO_ACCOUNT_SID
+    value: "CAMBIAR"
+    scope: RUN_TIME
+    type: SECRET
+  - key: TWILIO_AUTH_TOKEN
+    value: "CAMBIAR"
+    scope: RUN_TIME
+    type: SECRET
+  - key: TWILIO_FROM_NUMBER
+    value: "+1XXXXXXXXXX"
+    scope: RUN_TIME
+  # OCR de placas (ejemplo con Google Vision; ajusta según proveedor)
+  - key: OCR_PROVIDER
+    value: "google_vision"
+    scope: RUN_TIME
+  - key: OCR_API_KEY
+    value: "CAMBIAR"
+    scope: RUN_TIME
+    type: SECRET
+  # DO Spaces (Object Storage)
+  - key: SPACES_KEY
+    value: "CAMBIAR"
+    scope: RUN_TIME
+    type: SECRET
+  - key: SPACES_SECRET
+    value: "CAMBIAR"
+    scope: RUN_TIME
+    type: SECRET
+  - key: SPACES_REGION
+    value: "sfo3"
+    scope: RUN_TIME
+  - key: SPACES_BUCKET
+    value: "cy-evidencias"
+    scope: RUN_TIME
+  - key: SPACES_ENDPOINT
+    value: "https://sfo3.digitaloceanspaces.com"
+    scope: RUN_TIME
+
+# ============================================================
+# BASE DE DATOS POSTGRESQL GESTIONADA (DEV DATABASE → MIGRAR A MANAGED)
+# ============================================================
+databases:
+  - engine: PG
+    name: cy-db
+    version: "16"
+  - engine: REDIS
+    name: cy-redis
+    version: "7"
+    production: true
+
+# ============================================================
+# SERVICIOS (BACKEND FASTAPI + FRONTEND NEXT.JS + WORKER)
+# ============================================================
+services:
+  # -------------------- BACKEND API (FastAPI) --------------------
+  - name: api
+    http_port: 8000
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-1gb
+    source_dir: /backend
+    github:
+      repo: tu-org/cy-container-yard
+      branch: main
+      deploy_on_push: true
+    build_command: |
+      pip install --no-cache-dir -r requirements.txt
+    run_command: |
+      uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
+    health_check:
+      http_path: /api/health
+      initial_delay_seconds: 30
+      period_seconds: 15
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 3
+    liveness_health_check:
+      http_path: /api/health
+      initial_delay_seconds: 60
+      period_seconds: 20
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 5
+    envs:
+      # Base de datos (bindable)
+      - key: DATABASE_URL
+        value: "${cy-db.DATABASE_URL}"
+        scope: RUN_TIME
+      # Redis / Valkey
+      - key: REDIS_URL
+        value: "${cy-redis.DATABASE_URL}"
+        scope: RUN_TIME
+      # Backend especifico
+      - key: CORS_ORIGINS
+        value: "https://portal.patiolaesperanza.com.mx,https://cy-container-yard-xxxxx.ondigitalocean.app"
+        scope: RUN_TIME
+      - key: LOG_LEVEL
+        value: "INFO"
+        scope: RUN_TIME
+
+  # -------------------- FRONTEND (Next.js Static Site) --------------------
+  - name: web
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-1gb
+    source_dir: /frontend
+    github:
+      repo: tu-org/cy-container-yard
+      branch: main
+      deploy_on_push: true
+    build_command: |
+      npm ci
+      npm run build
+    run_command: |
+      npm start
+    http_port: 3000
+    routes:
+      - path: /
+    envs:
+      - key: NEXT_PUBLIC_API_URL
+        value: "https://api-cy-container-yard-xxxxx.ondigitalocean.app"
+        scope: BUILD_TIME
+      - key: NEXT_PUBLIC_API_URL
+        value: "https://api-cy-container-yard-xxxxx.ondigitalocean.app"
+        scope: RUN_TIME
+      - key: NEXT_PUBLIC_PORTAL_NAME
+        value: "Portal CY"
+        scope: BUILD_TIME
+      - key: NEXT_PUBLIC_PORTAL_NAME
+        value: "Portal CY"
+        scope: RUN_TIME
+
+# ============================================================
+# WORKERS (Jobs en background: QR, notificaciones, sincronización)
+# ============================================================
+workers:
+  - name: background-jobs
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-512mb
+    source_dir: /backend
+    github:
+      repo: tu-org/cy-container-yard
+      branch: main
+      deploy_on_push: true
+    build_command: |
+      pip install --no-cache-dir -r requirements.txt
+    run_command: |
+      python -m app.worker
+    envs:
+      - key: DATABASE_URL
+        value: "${cy-db.DATABASE_URL}"
+        scope: RUN_TIME
+      - key: REDIS_URL
+        value: "${cy-redis.DATABASE_URL}"
+        scope: RUN_TIME
+      - key: WORKER_CONCURRENCY
+        value: "4"
+        scope: RUN_TIME
+
+# ============================================================
+# REDIS / VALKEY (COLA DE JOBS Y CACHE)
+# ============================================================
+# Nota: DigitalOcean Managed Caching se migró a Valkey (Redis-compatible).
+# En App Platform se referencia como componente "redis" y expone DATABASE_URL.
+# Si creas el clúster por separado en Managed Databases, reemplaza por
+# variables bindables del clúster externo.
