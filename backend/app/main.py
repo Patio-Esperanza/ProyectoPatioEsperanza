@@ -2,7 +2,7 @@ from fastapi import Depends, FastAPI
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.routes import auth, contenedores, movimientos, patios
+from app.api.routes import auth, contenedores, movimientos, patios, ubicaciones
 from app.db import get_db
 
 app = FastAPI(title="Patio Esperanza API")
@@ -23,3 +23,4 @@ app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(patios.router, prefix="/api/patios", tags=["patios"])
 app.include_router(contenedores.router, prefix="/api/contenedores", tags=["contenedores"])
 app.include_router(movimientos.router, prefix="/api/movimientos", tags=["movimientos"])
+app.include_router(ubicaciones.router, prefix="/api/ubicaciones", tags=["ubicaciones"])

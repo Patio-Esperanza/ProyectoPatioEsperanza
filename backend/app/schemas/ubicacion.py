@@ -20,3 +20,15 @@ class MovimientoOut(BaseModel):
     contenedor_id: uuid.UUID
     ubicacion_destino_id: uuid.UUID | None
     tipo: TipoMovimiento
+
+
+class SugerenciaUbicacionRequest(BaseModel):
+    patio_id: uuid.UUID
+    contenedor_id: uuid.UUID
+    punto_referencia_ubicacion_id: uuid.UUID
+
+
+class SugerenciaUbicacionResponse(BaseModel):
+    ubicacion_id: uuid.UUID
+    codigo: str
+    costo: float
