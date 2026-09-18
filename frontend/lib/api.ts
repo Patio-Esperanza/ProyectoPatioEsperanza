@@ -148,3 +148,20 @@ export async function crearMovimiento(
     body: JSON.stringify(payload),
   });
 }
+
+export interface SugerenciaUbicacion {
+  ubicacion_id: string;
+  codigo: string;
+  costo: number;
+}
+
+export async function sugerirUbicacion(
+  token: string,
+  payload: { patio_id: string; contenedor_id: string; punto_referencia_ubicacion_id: string }
+): Promise<SugerenciaUbicacion> {
+  return request<SugerenciaUbicacion>("/api/ubicaciones/sugerir", {
+    method: "POST",
+    token,
+    body: JSON.stringify(payload),
+  });
+}

@@ -10,6 +10,8 @@ import {
   type Contenedor,
   crearMovimiento,
   type Movimiento,
+  sugerirUbicacion,
+  type SugerenciaUbicacion,
 } from "./api";
 
 const fetchMock = vi.fn();
@@ -145,6 +147,28 @@ describe("crearMovimiento", () => {
     expect(result).toEqual(movimiento);
     const [url, options] = fetchMock.mock.calls[0];
     expect(url).toContain("/api/movimientos");
+    expect(options.method).toBe("POST");
+  });
+});
+
+describe("sugerirUbicacion", () => {
+  it("posts the payload and returns the suggestion", async () => {
+    const sugerencia: SugerenciaUbicacion = {
+      ubicacion_id: "u1",
+      codigo: "A1-T1-S1-N1",
+      costo: 1.3,
+    };
+    fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => sugerencia });
+
+    const result = await sugerirUbicacion("token-123", {
+      patio_id: "p1",
+      contenedor_id: "c1",
+      punto_referencia_ubicacion_id: "u0",
+    });
+
+    expect(result).toEqual(sugerencia);
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toContain("/api/ubicaciones/sugerir");
     expect(options.method).toBe("POST");
   });
 });
