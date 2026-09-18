@@ -47,3 +47,9 @@ async def test_login_password_incorrecto_falla(client, db_session):
         "/api/auth/login", data={"username": "operador2@patio.mx", "password": "incorrecta"}
     )
     assert response.status_code == 401
+
+
+@pytest.mark.anyio
+async def test_endpoint_protegido_sin_token_devuelve_401(client):
+    response = await client.get("/api/patios")
+    assert response.status_code == 401
