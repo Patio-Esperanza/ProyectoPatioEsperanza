@@ -122,4 +122,4 @@ Fuera de alcance actual (requieren endpoints de backend que no existen todavía)
 
 ## Contribuir
 
-Los cambios se implementan siguiendo planes en `docs/superpowers/plans/`, task por task con TDD (test que falla → implementación → test verde → commit). Ver `CLAUDE.md` para convenciones del repo.
+Los cambios se implementan siguiendo planes en `docs/superpowers/plans/`, task por task con TDD (test que falla → implementación → test verde → commit).
