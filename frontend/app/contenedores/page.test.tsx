@@ -3,24 +3,31 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ContenedoresPage from "./page";
 import { useAuth } from "@/lib/auth-context";
-import { createContenedor } from "@/lib/api";
+import { createContenedor, listPatios } from "@/lib/api";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn(), push: vi.fn() }) }));
 vi.mock("@/lib/auth-context", () => ({ useAuth: vi.fn() }));
 vi.mock("@/lib/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api")>();
-  return { ...actual, createContenedor: vi.fn() };
+  return { ...actual, createContenedor: vi.fn(), listPatios: vi.fn() };
 });
+
+const PATIOS = [
+  { id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true },
+  { id: "p2", nombre: "Patio Sur", codigo: "PS", activo: true },
+];
 
 beforeEach(() => {
   vi.mocked(useAuth).mockReturnValue({
-    user: { id: "1", rol: "operador", patios: [] },
+    user: { id: "1", rol: "operador", patios: ["p1", "p2"] },
     token: "token",
     ready: true,
     setToken: vi.fn(),
     logout: vi.fn(),
   });
   vi.mocked(createContenedor).mockReset();
+  vi.mocked(listPatios).mockReset();
+  vi.mocked(listPatios).mockResolvedValue(PATIOS);
 });
 
 describe("ContenedoresPage", () => {
@@ -39,7 +46,7 @@ describe("ContenedoresPage", () => {
     render(<ContenedoresPage />);
 
     await user.type(screen.getByLabelText("Número de contenedor"), "CSQU3054383");
-    await user.type(screen.getByLabelText("ID de patio"), "p1");
+    await user.selectOptions(await screen.findByLabelText("Patio"), "p1");
     await user.type(screen.getByLabelText("Peso (kg)"), "18000");
     await user.click(screen.getByRole("button", { name: "Crear contenedor" }));
 
@@ -63,12 +70,28 @@ describe("ContenedoresPage", () => {
     render(<ContenedoresPage />);
 
     await user.type(screen.getByLabelText("Número de contenedor"), "CSQU3054380");
-    await user.type(screen.getByLabelText("ID de patio"), "p1");
+    await user.selectOptions(await screen.findByLabelText("Patio"), "p1");
     await user.type(screen.getByLabelText("Peso (kg)"), "18000");
     await user.click(screen.getByRole("button", { name: "Crear contenedor" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "numero_contenedor no cumple el checksum ISO 6346"
     );
+  });
+
+  it("auto-selects and locks the patio when the user has only one assigned", async () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { id: "1", rol: "operador", patios: ["p1"] },
+      token: "token",
+      ready: true,
+      setToken: vi.fn(),
+      logout: vi.fn(),
+    });
+
+    render(<ContenedoresPage />);
+
+    const select = await screen.findByLabelText("Patio");
+    expect(select).toBeDisabled();
+    expect(select).toHaveValue("p1");
   });
 });

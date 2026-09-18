@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
+import { PatioSelect } from "@/components/PatioSelect";
 import { useAuth } from "@/lib/auth-context";
 import {
   ApiError,
@@ -88,8 +89,8 @@ function ContenedoresContent() {
           <option value="45">45&apos;</option>
         </select>
 
-        <label htmlFor="patio_id">ID de patio</label>
-        <input id="patio_id" value={patioId} onChange={(e) => setPatioId(e.target.value)} required />
+        <label htmlFor="patio_id">Patio</label>
+        <PatioSelect id="patio_id" value={patioId} onChange={setPatioId} />
 
         <label htmlFor="peso_kg">Peso (kg)</label>
         <input
