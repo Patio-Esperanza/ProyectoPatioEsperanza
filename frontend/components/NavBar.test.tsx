@@ -41,4 +41,26 @@ describe("NavBar", () => {
     await user.click(screen.getByRole("button", { name: "Salir" }));
     expect(logoutMock).toHaveBeenCalled();
   });
+
+  it("shows the Usuarios link only for admin", () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { id: "1", rol: "operador", patios: [] },
+      token: "token",
+      ready: true,
+      setToken: vi.fn(),
+      logout: vi.fn(),
+    });
+    const { rerender } = render(<NavBar />);
+    expect(screen.queryByText("Usuarios")).not.toBeInTheDocument();
+
+    vi.mocked(useAuth).mockReturnValue({
+      user: { id: "1", rol: "admin", patios: [] },
+      token: "token",
+      ready: true,
+      setToken: vi.fn(),
+      logout: vi.fn(),
+    });
+    rerender(<NavBar />);
+    expect(screen.getByText("Usuarios")).toBeInTheDocument();
+  });
 });

@@ -22,6 +22,7 @@ export function NavBar() {
         <Link href="/contenedores">Contenedores</Link>
         <Link href="/movimientos">Movimientos</Link>
         <Link href="/ubicaciones/sugerir">Sugerir ubicación</Link>
+        {user.rol === "admin" && <Link href="/usuarios">Usuarios</Link>}
       </div>
       <div className={styles.session}>
         <span className={styles.rol}>{user.rol}</span>
