@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render } from "@testing-library/react";
-import HomePage from "./page";
+import { render, screen } from "@testing-library/react";
+import { AuthGuard } from "./AuthGuard";
 import { useAuth } from "@/lib/auth-context";
 
 const { replaceMock } = vi.hoisted(() => ({ replaceMock: vi.fn() }));
@@ -16,22 +16,27 @@ beforeEach(() => {
   vi.mocked(useAuth).mockReset();
 });
 
-describe("HomePage", () => {
-  it("redirects to /patios when authenticated", () => {
+describe("AuthGuard", () => {
+  it("renders children when there is a session", () => {
     vi.mocked(useAuth).mockReturnValue({
       user: { id: "1", rol: "admin", patios: [] },
-      token: "t",
+      token: "token",
       ready: true,
       setToken: vi.fn(),
       logout: vi.fn(),
     });
 
-    render(<HomePage />);
+    render(
+      <AuthGuard>
+        <p>contenido protegido</p>
+      </AuthGuard>
+    );
 
-    expect(replaceMock).toHaveBeenCalledWith("/patios");
+    expect(screen.getByText("contenido protegido")).toBeInTheDocument();
+    expect(replaceMock).not.toHaveBeenCalled();
   });
 
-  it("redirects to /login when not authenticated", () => {
+  it("redirects to /login when there is no session", () => {
     vi.mocked(useAuth).mockReturnValue({
       user: null,
       token: null,
@@ -40,12 +45,17 @@ describe("HomePage", () => {
       logout: vi.fn(),
     });
 
-    render(<HomePage />);
+    render(
+      <AuthGuard>
+        <p>contenido protegido</p>
+      </AuthGuard>
+    );
 
+    expect(screen.queryByText("contenido protegido")).not.toBeInTheDocument();
     expect(replaceMock).toHaveBeenCalledWith("/login");
   });
 
-  it("does nothing while the session is not ready", () => {
+  it("renders nothing while the session is not ready yet", () => {
     vi.mocked(useAuth).mockReturnValue({
       user: null,
       token: null,
@@ -54,8 +64,13 @@ describe("HomePage", () => {
       logout: vi.fn(),
     });
 
-    render(<HomePage />);
+    const { container } = render(
+      <AuthGuard>
+        <p>contenido protegido</p>
+      </AuthGuard>
+    );
 
+    expect(container).toBeEmptyDOMElement();
     expect(replaceMock).not.toHaveBeenCalled();
   });
 });

@@ -1,7 +1,17 @@
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
+
 export default function HomePage() {
-  return (
-    <main>
-      <h1>Patio Esperanza</h1>
-    </main>
-  );
+  const { user, ready } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!ready) return;
+    router.replace(user ? "/patios" : "/login");
+  }, [ready, user, router]);
+
+  return null;
 }

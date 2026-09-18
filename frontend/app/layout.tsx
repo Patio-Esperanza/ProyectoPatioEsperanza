@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
+import { AuthProvider } from "@/lib/auth-context";
+import { NavBar } from "@/components/NavBar";
 import "./globals.css";
 
 const plexSans = IBM_Plex_Sans({
@@ -17,12 +19,18 @@ const plexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "Patio Esperanza",
   description: "Gestión de patio de contenedores",
+  icons: { apple: "/favicon-180.png" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" className={`${plexSans.variable} ${plexMono.variable}`}>
-      <body>{children}</body>
+      <body>
+        <AuthProvider>
+          <NavBar />
+          {children}
+        </AuthProvider>
+      </body>
     </html>
   );
 }
