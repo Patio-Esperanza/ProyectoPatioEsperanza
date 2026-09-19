@@ -1,6 +1,7 @@
+import datetime
 import uuid
 
-from sqlalchemy import Boolean, Enum, ForeignKey, String
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -28,6 +29,10 @@ class Usuario(Base):
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     mfa_habilitado: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    codigo_verificacion: Mapped[str | None] = mapped_column(String(6), nullable=True)
+    codigo_verificacion_expira: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
 
 class UsuarioPatio(Base):

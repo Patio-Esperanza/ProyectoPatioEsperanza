@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     jwt_secret: str
     jwt_expires_minutes: int = 60
     cors_origins: str = "http://localhost:3000"
+    sendgrid_api_key: str
+    sendgrid_from_email: str
 
     @property
     def cors_origins_list(self) -> list[str]:

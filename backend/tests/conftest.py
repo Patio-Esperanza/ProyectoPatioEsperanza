@@ -16,6 +16,8 @@ os.environ.setdefault(
 )
 os.environ.setdefault("JWT_SECRET", "test-secret")
 os.environ.setdefault("JWT_EXPIRES_MINUTES", "60")
+os.environ.setdefault("SENDGRID_API_KEY", "test-sendgrid-key")
+os.environ.setdefault("SENDGRID_FROM_EMAIL", "test@patio.mx")
 
 from app.db import get_db  # noqa: E402
 from app.main import app  # noqa: E402
