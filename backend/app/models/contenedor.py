@@ -34,6 +34,11 @@ class Contenedor(Base):
     )
     peso_kg: Mapped[int] = mapped_column(Integer, nullable=False)
     fecha_estimada_salida: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    pin_confirmacion: Mapped[str | None] = mapped_column(String(4), nullable=True)
+    pin_verificado_en: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    pin_verificado_por: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True
+    )
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (
