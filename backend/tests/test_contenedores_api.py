@@ -103,3 +103,76 @@ async def test_cliente_no_puede_crear_contenedor(client, db_session):
         headers={"Authorization": f"Bearer {cliente_token}"},
     )
     assert response.status_code == 403
+
+
+async def _crear_patio(db_session, nombre: str, codigo: str):
+    from app.models.ubicacion import Patio
+
+    patio = Patio(nombre=nombre, codigo=codigo, activo=True)
+    db_session.add(patio)
+    await db_session.commit()
+    await db_session.refresh(patio)
+    return patio
+
+
+async def _crear_cliente(db_session, rfc: str):
+    from app.models.cliente import Cliente
+    from app.models.enums import TipoCliente
+
+    cliente = Cliente(
+        razon_social="Importadora Demo", rfc=rfc, tipo=TipoCliente.IMPORTADOR_EXPORTADOR, activo=True
+    )
+    db_session.add(cliente)
+    await db_session.commit()
+    await db_session.refresh(cliente)
+    return cliente
+
+
+@pytest.mark.anyio
+async def test_cliente_solicita_contenedor_con_patio_autoasignado(client, db_session):
+    patio = await _crear_patio(db_session, "Patio Norte", "PN4")
+    cliente = await _crear_cliente(db_session, "AAA010101AA1")
+    db_session.add(
+        Usuario(
+            id=uuid.UUID(_USUARIO_ID),
+            tipo=RolUsuario.CLIENTE,
+            email="cliente@empresa.mx",
+            password_hash="hash",
+            cliente_id=cliente.id,
+            activo=True,
+        )
+    )
+    await db_session.commit()
+    token = create_access_token(_USUARIO_ID, "cliente", [], 60, cliente_id=str(cliente.id))
+
+    response = await client.post(
+        "/api/contenedores/solicitar",
+        json={
+            "numero_contenedor": "CSQU3054383",
+            "tipo": "lleno",
+            "tamano": "40",
+            "peso_kg": 18000,
+            "fecha_estimada_retiro": "2026-10-01",
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["estado"] == "solicitud_ingreso"
+    assert body["patio_id"] == str(patio.id)
+    assert body["fecha_estimada_retiro"].startswith("2026-10-01")
+
+
+@pytest.mark.anyio
+async def test_operador_no_puede_solicitar_contenedor(client, db_session):
+    await _crear_usuario_autenticado(db_session)
+    token = _token(RolUsuario.OPERADOR)
+
+    response = await client.post(
+        "/api/contenedores/solicitar",
+        json={"numero_contenedor": "CSQU3054383", "tipo": "lleno", "tamano": "40", "peso_kg": 18000},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 403
