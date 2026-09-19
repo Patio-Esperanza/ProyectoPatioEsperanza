@@ -25,6 +25,7 @@ class Patio(Base):
     codigo: Mapped[str] = mapped_column(String(20), nullable=False, unique=True)
     timezone: Mapped[str] = mapped_column(String(50), nullable=False, default="America/Mexico_City")
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    anticipacion_minima_horas: Mapped[int] = mapped_column(Integer, nullable=False, default=24)
 
 
 class Carril(Base):
