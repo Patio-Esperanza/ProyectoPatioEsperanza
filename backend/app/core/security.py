@@ -17,7 +17,13 @@ def verify_password(password: str, password_hash: str) -> bool:
     return _pwd_context.verify(password, password_hash)
 
 
-def create_access_token(usuario_id: str, rol: str, patios: list[str], expires_minutes: int) -> str:
+def create_access_token(
+    usuario_id: str,
+    rol: str,
+    patios: list[str],
+    expires_minutes: int,
+    cliente_id: str | None = None,
+) -> str:
     now = datetime.now(timezone.utc)
     payload = {
         "sub": usuario_id,
@@ -26,6 +32,8 @@ def create_access_token(usuario_id: str, rol: str, patios: list[str], expires_mi
         "iat": now,
         "exp": now + timedelta(minutes=expires_minutes),
     }
+    if cliente_id is not None:
+        payload["cliente_id"] = cliente_id
     return jwt.encode(payload, settings.jwt_secret, algorithm=_ALGORITHM)
 
 

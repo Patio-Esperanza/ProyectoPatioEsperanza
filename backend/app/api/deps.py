@@ -20,6 +20,7 @@ class CurrentUser:
     id: uuid.UUID
     rol: RolUsuario
     patios: list[uuid.UUID]
+    cliente_id: uuid.UUID | None
 
 
 async def get_current_user(
@@ -38,10 +39,13 @@ async def get_current_user(
     if usuario is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Usuario no encontrado")
 
+    cliente_id_claim = payload.get("cliente_id")
+
     return CurrentUser(
         id=usuario.id,
         rol=RolUsuario(payload["rol"]),
         patios=[uuid.UUID(p) for p in payload.get("patios", [])],
+        cliente_id=uuid.UUID(cliente_id_claim) if cliente_id_claim else None,
     )
 
 

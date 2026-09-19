@@ -32,5 +32,11 @@ async def login(
     )
     patios = [str(row[0]) for row in patios_result.all()]
 
-    token = create_access_token(str(usuario.id), usuario.tipo.value, patios, settings.jwt_expires_minutes)
+    token = create_access_token(
+        str(usuario.id),
+        usuario.tipo.value,
+        patios,
+        settings.jwt_expires_minutes,
+        cliente_id=str(usuario.cliente_id) if usuario.cliente_id else None,
+    )
     return TokenResponse(access_token=token)

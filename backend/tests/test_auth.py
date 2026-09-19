@@ -53,3 +53,37 @@ async def test_login_password_incorrecto_falla(client, db_session):
 async def test_endpoint_protegido_sin_token_devuelve_401(client):
     response = await client.get("/api/patios")
     assert response.status_code == 401
+
+
+@pytest.mark.anyio
+async def test_login_de_cliente_incluye_cliente_id_en_token(client, db_session):
+    from app.core.security import decode_access_token
+    from app.models.cliente import Cliente
+    from app.models.enums import TipoCliente
+
+    cliente = Cliente(
+        razon_social="Importadora Demo",
+        rfc="AAA010101AA9",
+        tipo=TipoCliente.IMPORTADOR_EXPORTADOR,
+        activo=True,
+    )
+    db_session.add(cliente)
+    await db_session.flush()
+
+    usuario = Usuario(
+        tipo=RolUsuario.CLIENTE,
+        email="cliente@empresa.mx",
+        password_hash=hash_password("clave123"),
+        cliente_id=cliente.id,
+        activo=True,
+    )
+    db_session.add(usuario)
+    await db_session.commit()
+
+    response = await client.post(
+        "/api/auth/login", data={"username": "cliente@empresa.mx", "password": "clave123"}
+    )
+    assert response.status_code == 200
+    token = response.json()["access_token"]
+    payload = decode_access_token(token)
+    assert payload["cliente_id"] == str(cliente.id)
