@@ -4,15 +4,18 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { AuthGuard } from "@/components/AuthGuard";
 import { useAuth } from "@/lib/auth-context";
-import { ApiError, getContenedor, type Contenedor } from "@/lib/api";
+import { ApiError, getContenedor, obtenerPin, type Contenedor } from "@/lib/api";
 import styles from "./page.module.css";
 
 function ContenedorDetalleContent() {
   const params = useParams<{ id: string }>();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [contenedor, setContenedor] = useState<Contenedor | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pin, setPin] = useState<string | null>(null);
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [pinLoading, setPinLoading] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -34,6 +37,20 @@ function ContenedorDetalleContent() {
       cancelado = true;
     };
   }, [token, params.id]);
+
+  async function handleVerPin() {
+    if (!token) return;
+    setPinLoading(true);
+    setPinError(null);
+    try {
+      const resultado = await obtenerPin(token, params.id);
+      setPin(resultado.pin_confirmacion);
+    } catch (err) {
+      setPinError(err instanceof ApiError ? err.message : "No se pudo obtener el PIN");
+    } finally {
+      setPinLoading(false);
+    }
+  }
 
   if (loading) return <p>Cargando...</p>;
   if (error)
@@ -57,6 +74,19 @@ function ContenedorDetalleContent() {
         <dt>Peso</dt>
         <dd>{contenedor.peso_kg} kg</dd>
       </dl>
+      {user?.rol === "admin" && (
+        <div>
+          <button onClick={handleVerPin} disabled={pinLoading}>
+            {pinLoading ? "Cargando..." : "Ver PIN"}
+          </button>
+          {pinError && (
+            <p role="alert" className={styles.error}>
+              {pinError}
+            </p>
+          )}
+          {pin && <p className="mono">{pin}</p>}
+        </div>
+      )}
     </main>
   );
 }
