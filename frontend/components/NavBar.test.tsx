@@ -107,4 +107,26 @@ describe("NavBar", () => {
     rerender(<NavBar />);
     expect(screen.getByText("Clientes")).toBeInTheDocument();
   });
+
+  it("shows the Porteria link only for operador, supervisor and admin", () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { id: "1", rol: "cliente", patios: [] },
+      token: "token",
+      ready: true,
+      setToken: vi.fn(),
+      logout: vi.fn(),
+    });
+    const { rerender } = render(<NavBar />);
+    expect(screen.queryByText("Portería")).not.toBeInTheDocument();
+
+    vi.mocked(useAuth).mockReturnValue({
+      user: { id: "1", rol: "operador", patios: [] },
+      token: "token",
+      ready: true,
+      setToken: vi.fn(),
+      logout: vi.fn(),
+    });
+    rerender(<NavBar />);
+    expect(screen.getByText("Portería")).toBeInTheDocument();
+  });
 });

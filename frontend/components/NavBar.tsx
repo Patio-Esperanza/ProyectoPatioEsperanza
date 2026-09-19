@@ -22,6 +22,9 @@ export function NavBar() {
         <Link href="/contenedores">Contenedores</Link>
         <Link href="/movimientos">Movimientos</Link>
         <Link href="/ubicaciones/sugerir">Sugerir ubicación</Link>
+        {(user.rol === "operador" || user.rol === "supervisor" || user.rol === "admin") && (
+          <Link href="/porteria">Portería</Link>
+        )}
         {user.rol === "admin" && <Link href="/usuarios">Usuarios</Link>}
         {user.rol === "admin" && <Link href="/clientes">Clientes</Link>}
         {user.rol === "cliente" && <Link href="/solicitar">Solicitar entrada</Link>}
