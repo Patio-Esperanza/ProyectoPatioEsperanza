@@ -100,6 +100,7 @@ export interface Contenedor {
   patio_id: string;
   estado: EstadoContenedor;
   peso_kg: number;
+  fecha_estimada_retiro?: string | null;
 }
 
 export async function createContenedor(
@@ -192,6 +193,74 @@ export async function createUsuario(
   }
 ): Promise<Usuario> {
   return request<Usuario>("/api/usuarios", {
+    method: "POST",
+    token,
+    body: JSON.stringify(payload),
+  });
+}
+
+export type TipoCliente =
+  | "agencia_aduanal"
+  | "importador_exportador"
+  | "transportista"
+  | "socio_api";
+
+export interface Cliente {
+  id: string;
+  razon_social: string;
+  rfc: string;
+  tipo: TipoCliente;
+  activo: boolean;
+}
+
+export async function listClientes(token: string): Promise<Cliente[]> {
+  return request<Cliente[]>("/api/clientes", { token });
+}
+
+export async function createCliente(
+  token: string,
+  payload: { razon_social: string; rfc: string; tipo: TipoCliente }
+): Promise<Cliente> {
+  return request<Cliente>("/api/clientes", {
+    method: "POST",
+    token,
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function registrarCliente(payload: {
+  nombre: string;
+  email: string;
+  password: string;
+  rfc: string;
+}): Promise<{ detail: string }> {
+  return request<{ detail: string }>("/api/clientes/registro", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function verificarCliente(payload: {
+  email: string;
+  codigo: string;
+}): Promise<{ detail: string }> {
+  return request<{ detail: string }>("/api/clientes/verificar", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function solicitarContenedor(
+  token: string,
+  payload: {
+    numero_contenedor: string;
+    tipo: TipoContenedor;
+    tamano: TamanoContenedor;
+    peso_kg: number;
+    fecha_estimada_retiro?: string;
+  }
+): Promise<Contenedor> {
+  return request<Contenedor>("/api/contenedores/solicitar", {
     method: "POST",
     token,
     body: JSON.stringify(payload),

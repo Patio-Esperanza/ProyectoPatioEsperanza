@@ -15,6 +15,12 @@ import {
   listUsuarios,
   createUsuario,
   type Usuario,
+  listClientes,
+  createCliente,
+  type Cliente,
+  registrarCliente,
+  verificarCliente,
+  solicitarContenedor,
 } from "./api";
 
 const fetchMock = vi.fn();
@@ -221,5 +227,100 @@ describe("createUsuario", () => {
       tipo: "operador",
       patio_ids: ["p1"],
     });
+  });
+});
+
+const CLIENTE: Cliente = {
+  id: "cl1",
+  razon_social: "Importadora Demo",
+  rfc: "AAA010101AA1",
+  tipo: "importador_exportador",
+  activo: true,
+};
+
+describe("listClientes", () => {
+  it("sends the bearer token and returns the list", async () => {
+    fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => [CLIENTE] });
+
+    const result = await listClientes("token-123");
+
+    expect(result).toEqual([CLIENTE]);
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toContain("/api/clientes");
+    expect(options.headers.Authorization).toBe("Bearer token-123");
+  });
+});
+
+describe("createCliente", () => {
+  it("posts the payload as JSON with the bearer token", async () => {
+    fetchMock.mockResolvedValue({ ok: true, status: 201, json: async () => CLIENTE });
+
+    const result = await createCliente("token-123", {
+      razon_social: "Importadora Demo",
+      rfc: "AAA010101AA1",
+      tipo: "importador_exportador",
+    });
+
+    expect(result).toEqual(CLIENTE);
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toContain("/api/clientes");
+    expect(options.method).toBe("POST");
+  });
+});
+
+describe("registrarCliente", () => {
+  it("posts the payload without a bearer token", async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: async () => ({ detail: "Código de verificación enviado" }),
+    });
+
+    const result = await registrarCliente({
+      nombre: "Juan",
+      email: "juan@empresa.mx",
+      password: "clave1234",
+      rfc: "AAA010101AA1",
+    });
+
+    expect(result).toEqual({ detail: "Código de verificación enviado" });
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toContain("/api/clientes/registro");
+    expect(options.headers.Authorization).toBeUndefined();
+  });
+});
+
+describe("verificarCliente", () => {
+  it("posts email and codigo", async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ detail: "Cuenta activada" }),
+    });
+
+    const result = await verificarCliente({ email: "juan@empresa.mx", codigo: "123456" });
+
+    expect(result).toEqual({ detail: "Cuenta activada" });
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toContain("/api/clientes/verificar");
+  });
+});
+
+describe("solicitarContenedor", () => {
+  it("posts the payload as JSON with the bearer token", async () => {
+    fetchMock.mockResolvedValue({ ok: true, status: 201, json: async () => CONTENEDOR });
+
+    const result = await solicitarContenedor("token-123", {
+      numero_contenedor: "CSQU3054383",
+      tipo: "lleno",
+      tamano: "40",
+      peso_kg: 18000,
+      fecha_estimada_retiro: "2026-10-01",
+    });
+
+    expect(result).toEqual(CONTENEDOR);
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toContain("/api/contenedores/solicitar");
+    expect(options.method).toBe("POST");
   });
 });
