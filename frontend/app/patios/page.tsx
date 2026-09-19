@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
 import { useAuth } from "@/lib/auth-context";
-import { ApiError, createPatio, listPatios, type Patio } from "@/lib/api";
+import { ApiError, actualizarPatio, createPatio, listPatios, type Patio } from "@/lib/api";
 import styles from "./page.module.css";
 
 function PatiosContent() {
@@ -50,6 +50,16 @@ function PatiosContent() {
     }
   }
 
+  async function handleActualizarAnticipacion(patioId: string, valor: number) {
+    if (!token || Number.isNaN(valor) || valor <= 0) return;
+    try {
+      await actualizarPatio(token, patioId, valor);
+      await cargarPatios();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "No se pudo actualizar la anticipación");
+    }
+  }
+
   return (
     <main className={styles.main}>
       <h1>Patios</h1>
@@ -65,6 +75,20 @@ function PatiosContent() {
           {patios.map((patio) => (
             <li key={patio.id}>
               <span className="mono">{patio.codigo}</span> — {patio.nombre}
+              {user?.rol === "admin" && (
+                <span className={styles.anticipacion}>
+                  <label htmlFor={`anticipacion-${patio.id}`}>
+                    Anticipación mínima (h) — {patio.codigo}
+                  </label>
+                  <input
+                    id={`anticipacion-${patio.id}`}
+                    type="number"
+                    min={1}
+                    defaultValue={patio.anticipacion_minima_horas}
+                    onBlur={(e) => handleActualizarAnticipacion(patio.id, Number(e.target.value))}
+                  />
+                </span>
+              )}
             </li>
           ))}
         </ul>
