@@ -21,9 +21,15 @@ import {
   registrarCliente,
   verificarCliente,
   solicitarContenedor,
+  obtenerPin,
+  verificarPin,
 } from "./api";
 
 const fetchMock = vi.fn();
+
+function jsonResponse(data: unknown) {
+  return { ok: true, status: 200, json: async () => data };
+}
 
 beforeEach(() => {
   vi.stubGlobal("fetch", fetchMock);
@@ -322,5 +328,48 @@ describe("solicitarContenedor", () => {
     const [url, options] = fetchMock.mock.calls[0];
     expect(url).toContain("/api/contenedores/solicitar");
     expect(options.method).toBe("POST");
+  });
+});
+
+describe("obtenerPin", () => {
+  it("returns the pin for an authorized user", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ pin_confirmacion: "4821" })
+    );
+
+    const result = await obtenerPin("token", "c1");
+
+    expect(result).toEqual({ pin_confirmacion: "4821" });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8000/api/contenedores/c1/pin",
+      expect.objectContaining({ headers: expect.objectContaining({ Authorization: "Bearer token" }) })
+    );
+  });
+});
+
+describe("verificarPin", () => {
+  it("posts numero_contenedor and pin", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        id: "c1",
+        numero_contenedor: "CSQU3054383",
+        tipo: "lleno",
+        tamano: "40",
+        patio_id: "p1",
+        estado: "en_porteria",
+        peso_kg: 18000,
+      })
+    );
+
+    const result = await verificarPin("token", { numero_contenedor: "CSQU3054383", pin: "4821" });
+
+    expect(result.estado).toBe("en_porteria");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8000/api/contenedores/verificar-pin",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ numero_contenedor: "CSQU3054383", pin: "4821" }),
+      })
+    );
   });
 });

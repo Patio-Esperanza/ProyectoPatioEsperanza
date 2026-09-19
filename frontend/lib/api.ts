@@ -124,6 +124,21 @@ export async function getContenedor(token: string, id: string): Promise<Contened
   return request<Contenedor>(`/api/contenedores/${id}`, { token });
 }
 
+export async function obtenerPin(token: string, id: string): Promise<{ pin_confirmacion: string }> {
+  return request<{ pin_confirmacion: string }>(`/api/contenedores/${id}/pin`, { token });
+}
+
+export async function verificarPin(
+  token: string,
+  payload: { numero_contenedor: string; pin: string }
+): Promise<Contenedor> {
+  return request<Contenedor>("/api/contenedores/verificar-pin", {
+    method: "POST",
+    token,
+    body: JSON.stringify(payload),
+  });
+}
+
 export type TipoMovimiento = "ingreso" | "reubicacion" | "servicio" | "salida";
 
 export interface Movimiento {
