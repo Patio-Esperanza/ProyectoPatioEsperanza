@@ -85,4 +85,26 @@ describe("NavBar", () => {
     rerender(<NavBar />);
     expect(screen.getByText("Solicitar entrada")).toBeInTheDocument();
   });
+
+  it("shows the Clientes link only for admin", () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { id: "1", rol: "operador", patios: [] },
+      token: "token",
+      ready: true,
+      setToken: vi.fn(),
+      logout: vi.fn(),
+    });
+    const { rerender } = render(<NavBar />);
+    expect(screen.queryByText("Clientes")).not.toBeInTheDocument();
+
+    vi.mocked(useAuth).mockReturnValue({
+      user: { id: "1", rol: "admin", patios: [] },
+      token: "token",
+      ready: true,
+      setToken: vi.fn(),
+      logout: vi.fn(),
+    });
+    rerender(<NavBar />);
+    expect(screen.getByText("Clientes")).toBeInTheDocument();
+  });
 });

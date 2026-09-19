@@ -23,6 +23,7 @@ export function NavBar() {
         <Link href="/movimientos">Movimientos</Link>
         <Link href="/ubicaciones/sugerir">Sugerir ubicación</Link>
         {user.rol === "admin" && <Link href="/usuarios">Usuarios</Link>}
+        {user.rol === "admin" && <Link href="/clientes">Clientes</Link>}
         {user.rol === "cliente" && <Link href="/solicitar">Solicitar entrada</Link>}
       </div>
       <div className={styles.session}>
