@@ -484,3 +484,83 @@ async def test_cliente_no_puede_verificar_pin(client, db_session, enviados_pin):
     )
 
     assert response.status_code == 403
+
+
+@pytest.mark.anyio
+async def test_listar_contenedores_cliente_solo_ve_los_suyos(client, db_session, enviados_pin):
+    from app.models.cliente import Cliente
+    from app.models.enums import TipoCliente
+
+    _, cliente_a = await _crear_solicitud_con_pin(
+        client, db_session, "00000000-0000-0000-0000-00000000000c", "LLL121212LL1", "CSQU3060010"
+    )
+    otro_cliente = Cliente(
+        razon_social="Otra Importadora", rfc="MMM131313MM1", tipo=TipoCliente.TRANSPORTISTA, activo=True
+    )
+    db_session.add(otro_cliente)
+    await db_session.commit()
+    await db_session.refresh(otro_cliente)
+    db_session.add(
+        Usuario(
+            id=uuid.UUID("00000000-0000-0000-0000-00000000000d"),
+            tipo=RolUsuario.CLIENTE,
+            email="otro-listado@empresa.mx",
+            password_hash="hash",
+            cliente_id=otro_cliente.id,
+            activo=True,
+        )
+    )
+    await db_session.commit()
+    otro_token = create_access_token(
+        "00000000-0000-0000-0000-00000000000d", "cliente", [], 60, cliente_id=str(otro_cliente.id)
+    )
+    await client.post(
+        "/api/contenedores/solicitar",
+        json={"numero_contenedor": "CSQU3060025", "tipo": "lleno", "tamano": "40", "peso_kg": 18000},
+        headers={"Authorization": f"Bearer {otro_token}"},
+    )
+
+    token_a = create_access_token(
+        "00000000-0000-0000-0000-00000000000c", "cliente", [], 60, cliente_id=str(cliente_a.id)
+    )
+    response = await client.get("/api/contenedores", headers={"Authorization": f"Bearer {token_a}"})
+
+    assert response.status_code == 200
+    numeros = [c["numero_contenedor"] for c in response.json()]
+    assert numeros == ["CSQU3060010"]
+
+
+@pytest.mark.anyio
+async def test_listar_contenedores_staff_filtra_por_estado_ordenado_por_fecha(client, db_session, enviados_pin):
+    from datetime import datetime, timedelta, timezone
+    from sqlalchemy import select as sa_select
+
+    contenedor_id_1, _ = await _crear_solicitud_con_pin(
+        client, db_session, "00000000-0000-0000-0000-00000000000e", "NNN141414NN1", "CSQU3060030"
+    )
+    contenedor_id_2, _ = await _crear_solicitud_con_pin(
+        client, db_session, "00000000-0000-0000-0000-00000000000f", "OOO151515OO1", "TCLU3060465"
+    )
+
+    result1 = await db_session.execute(sa_select(Contenedor).where(Contenedor.id == contenedor_id_1))
+    c1 = result1.scalar_one()
+    c1.estado = "solicitud_salida"
+    c1.fecha_deseada_salida = datetime.now(timezone.utc) + timedelta(days=5)
+
+    result2 = await db_session.execute(sa_select(Contenedor).where(Contenedor.id == contenedor_id_2))
+    c2 = result2.scalar_one()
+    c2.estado = "solicitud_salida"
+    c2.fecha_deseada_salida = datetime.now(timezone.utc) + timedelta(days=1)
+    await db_session.commit()
+
+    await _crear_usuario_autenticado(db_session)
+    admin_token = _token(RolUsuario.ADMIN)
+
+    response = await client.get(
+        "/api/contenedores?estado=solicitud_salida",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+
+    assert response.status_code == 200
+    ids = [c["id"] for c in response.json()]
+    assert ids == [str(contenedor_id_2), str(contenedor_id_1)]

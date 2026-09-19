@@ -1,6 +1,7 @@
 import secrets
+import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import func
@@ -24,6 +25,36 @@ from app.schemas.contenedor import (
 router = APIRouter()
 
 _ROLES_ESCRITURA = (RolUsuario.OPERADOR, RolUsuario.SUPERVISOR, RolUsuario.ADMIN)
+
+
+@router.get("", response_model=list[ContenedorOut])
+async def listar_contenedores(
+    estado: EstadoContenedor | None = Query(default=None),
+    patio_id: uuid.UUID | None = Query(default=None),
+    cliente_id: uuid.UUID | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+) -> list[Contenedor]:
+    query = select(Contenedor)
+
+    if user.rol == RolUsuario.CLIENTE:
+        query = query.where(Contenedor.cliente_id == user.cliente_id)
+    else:
+        if patio_id is not None:
+            query = query.where(Contenedor.patio_id == patio_id)
+        if cliente_id is not None:
+            query = query.where(Contenedor.cliente_id == cliente_id)
+
+    if estado is not None:
+        query = query.where(Contenedor.estado == estado)
+
+    if estado == EstadoContenedor.SOLICITUD_SALIDA:
+        query = query.order_by(Contenedor.fecha_deseada_salida.asc())
+    else:
+        query = query.order_by(Contenedor.created_at.desc())
+
+    result = await db.execute(query)
+    return list(result.scalars().all())
 
 
 @router.post("", response_model=ContenedorOut, status_code=status.HTTP_201_CREATED)
