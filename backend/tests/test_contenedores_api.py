@@ -3,6 +3,7 @@ import uuid
 import pytest
 
 from app.core.security import create_access_token
+from app.models.contenedor import Contenedor
 from app.models.enums import RolUsuario
 from app.models.usuario import Usuario
 
@@ -128,8 +129,19 @@ async def _crear_cliente(db_session, rfc: str):
     return cliente
 
 
+@pytest.fixture
+def enviados_pin(monkeypatch):
+    capturados = []
+
+    def _fake(destinatario, asunto, contenido_html):
+        capturados.append((destinatario, asunto, contenido_html))
+
+    monkeypatch.setattr("app.api.routes.contenedores.enviar_correo", _fake)
+    return capturados
+
+
 @pytest.mark.anyio
-async def test_cliente_solicita_contenedor_con_patio_autoasignado(client, db_session):
+async def test_cliente_solicita_contenedor_con_patio_autoasignado(client, db_session, enviados_pin):
     patio = await _crear_patio(db_session, "Patio Norte", "PN4")
     cliente = await _crear_cliente(db_session, "AAA010101AA1")
     db_session.add(
@@ -172,6 +184,302 @@ async def test_operador_no_puede_solicitar_contenedor(client, db_session):
     response = await client.post(
         "/api/contenedores/solicitar",
         json={"numero_contenedor": "CSQU3054383", "tipo": "lleno", "tamano": "40", "peso_kg": 18000},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.anyio
+async def test_solicitar_genera_pin_y_envia_correo(client, db_session, enviados_pin):
+    from app.models.cliente import Cliente
+    from app.models.enums import TipoCliente
+
+    patio = await _crear_patio(db_session, "Patio Norte", "PN5")
+    cliente = Cliente(
+        razon_social="Importadora PIN", rfc="BBB020202BB2", tipo=TipoCliente.IMPORTADOR_EXPORTADOR, activo=True
+    )
+    db_session.add(cliente)
+    await db_session.commit()
+    await db_session.refresh(cliente)
+    db_session.add(
+        Usuario(
+            id=uuid.UUID(_USUARIO_ID),
+            tipo=RolUsuario.CLIENTE,
+            email="pin-cliente@empresa.mx",
+            password_hash="hash",
+            cliente_id=cliente.id,
+            activo=True,
+        )
+    )
+    await db_session.commit()
+    token = create_access_token(_USUARIO_ID, "cliente", [], 60, cliente_id=str(cliente.id))
+
+    response = await client.post(
+        "/api/contenedores/solicitar",
+        json={
+            "numero_contenedor": "CSQU3054383",
+            "tipo": "lleno",
+            "tamano": "40",
+            "peso_kg": 18000,
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 201
+    assert "pin_confirmacion" not in response.json()
+    assert len(enviados_pin) == 1
+    destinatario, asunto, contenido = enviados_pin[0]
+    assert destinatario == "pin-cliente@empresa.mx"
+    assert "PIN" in asunto
+
+    from sqlalchemy import select as sa_select
+
+    result = await db_session.execute(
+        sa_select(Contenedor).where(Contenedor.numero_contenedor == "CSQU3054383")
+    )
+    contenedor = result.scalar_one()
+    assert contenedor.pin_confirmacion is not None
+    assert len(contenedor.pin_confirmacion) == 4
+    assert contenedor.pin_confirmacion.isdigit()
+    assert contenedor.pin_confirmacion in contenido
+
+
+async def _crear_solicitud_con_pin(client, db_session, usuario_id: str, cliente_rfc: str, numero: str):
+    from app.models.cliente import Cliente
+    from app.models.enums import TipoCliente
+
+    patio = await _crear_patio(db_session, f"Patio {numero}", numero[:6])
+    cliente = Cliente(
+        razon_social="Importadora Test", rfc=cliente_rfc, tipo=TipoCliente.IMPORTADOR_EXPORTADOR, activo=True
+    )
+    db_session.add(cliente)
+    await db_session.commit()
+    await db_session.refresh(cliente)
+    db_session.add(
+        Usuario(
+            id=uuid.UUID(usuario_id),
+            tipo=RolUsuario.CLIENTE,
+            email=f"{usuario_id}@empresa.mx",
+            password_hash="hash",
+            cliente_id=cliente.id,
+            activo=True,
+        )
+    )
+    await db_session.commit()
+    token = create_access_token(usuario_id, "cliente", [], 60, cliente_id=str(cliente.id))
+
+    response = await client.post(
+        "/api/contenedores/solicitar",
+        json={"numero_contenedor": numero, "tipo": "lleno", "tamano": "40", "peso_kg": 18000},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    return response.json()["id"], cliente
+
+
+@pytest.mark.anyio
+async def test_admin_ve_pin(client, db_session, enviados_pin):
+    await _crear_usuario_autenticado(db_session)
+    admin_token = _token(RolUsuario.ADMIN)
+    contenedor_id, _ = await _crear_solicitud_con_pin(
+        client, db_session, "00000000-0000-0000-0000-000000000002", "CCC030303CC3", "CSQU3053849"
+    )
+
+    response = await client.get(
+        f"/api/contenedores/{contenedor_id}/pin",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+
+    assert response.status_code == 200
+    assert len(response.json()["pin_confirmacion"]) == 4
+
+
+@pytest.mark.anyio
+async def test_cliente_dueno_ve_pin(client, db_session, enviados_pin):
+    contenedor_id, cliente = await _crear_solicitud_con_pin(
+        client, db_session, "00000000-0000-0000-0000-000000000003", "DDD040404DD4", "CSQU3053854"
+    )
+    token = create_access_token(
+        "00000000-0000-0000-0000-000000000003", "cliente", [], 60, cliente_id=str(cliente.id)
+    )
+
+    response = await client.get(
+        f"/api/contenedores/{contenedor_id}/pin",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert len(response.json()["pin_confirmacion"]) == 4
+
+
+@pytest.mark.anyio
+async def test_cliente_de_otra_empresa_no_ve_pin(client, db_session, enviados_pin):
+    from app.models.cliente import Cliente
+    from app.models.enums import TipoCliente
+
+    contenedor_id, _ = await _crear_solicitud_con_pin(
+        client, db_session, "00000000-0000-0000-0000-000000000004", "EEE050505EE5", "CSQU3053860"
+    )
+
+    otro_cliente = Cliente(
+        razon_social="Otra Empresa", rfc="FFF060606FF6", tipo=TipoCliente.TRANSPORTISTA, activo=True
+    )
+    db_session.add(otro_cliente)
+    await db_session.commit()
+    await db_session.refresh(otro_cliente)
+    otro_token = create_access_token(
+        "00000000-0000-0000-0000-000000000005", "cliente", [], 60, cliente_id=str(otro_cliente.id)
+    )
+    db_session.add(
+        Usuario(
+            id=uuid.UUID("00000000-0000-0000-0000-000000000005"),
+            tipo=RolUsuario.CLIENTE,
+            email="otro@empresa.mx",
+            password_hash="hash",
+            cliente_id=otro_cliente.id,
+            activo=True,
+        )
+    )
+    await db_session.commit()
+
+    response = await client.get(
+        f"/api/contenedores/{contenedor_id}/pin",
+        headers={"Authorization": f"Bearer {otro_token}"},
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.anyio
+async def test_operador_no_ve_pin(client, db_session, enviados_pin):
+    await _crear_usuario_autenticado(db_session)
+    op_token = _token(RolUsuario.OPERADOR)
+    contenedor_id, _ = await _crear_solicitud_con_pin(
+        client, db_session, "00000000-0000-0000-0000-000000000006", "GGG070707GG7", "CSQU3053875"
+    )
+
+    response = await client.get(
+        f"/api/contenedores/{contenedor_id}/pin",
+        headers={"Authorization": f"Bearer {op_token}"},
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.anyio
+async def test_pin_de_contenedor_inexistente_404(client, db_session):
+    await _crear_usuario_autenticado(db_session)
+    admin_token = _token(RolUsuario.ADMIN)
+
+    response = await client.get(
+        "/api/contenedores/00000000-0000-0000-0000-0000000000ff/pin",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_operador_verifica_pin_correcto(client, db_session, enviados_pin):
+    from sqlalchemy import select as sa_select
+
+    contenedor_id, _ = await _crear_solicitud_con_pin(
+        client, db_session, "00000000-0000-0000-0000-000000000007", "HHH080808HH8", "CSQU3053880"
+    )
+    result = await db_session.execute(sa_select(Contenedor).where(Contenedor.id == contenedor_id))
+    contenedor = result.scalar_one()
+    pin_real = contenedor.pin_confirmacion
+
+    await _crear_usuario_autenticado(db_session)
+    op_token = _token(RolUsuario.OPERADOR)
+
+    response = await client.post(
+        "/api/contenedores/verificar-pin",
+        json={"numero_contenedor": "CSQU3053880", "pin": pin_real},
+        headers={"Authorization": f"Bearer {op_token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["estado"] == "en_porteria"
+
+    await db_session.refresh(contenedor)
+    assert contenedor.pin_verificado_en is not None
+    assert str(contenedor.pin_verificado_por) == "00000000-0000-0000-0000-000000000001"
+
+
+@pytest.mark.anyio
+async def test_verificar_pin_incorrecto_422(client, db_session, enviados_pin):
+    await _crear_solicitud_con_pin(
+        client, db_session, "00000000-0000-0000-0000-000000000008", "III090909II9", "CSQU3053896"
+    )
+    await _crear_usuario_autenticado(db_session)
+    op_token = _token(RolUsuario.OPERADOR)
+
+    response = await client.post(
+        "/api/contenedores/verificar-pin",
+        json={"numero_contenedor": "CSQU3053896", "pin": "0000"},
+        headers={"Authorization": f"Bearer {op_token}"},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "PIN incorrecto"
+
+
+@pytest.mark.anyio
+async def test_verificar_pin_numero_inexistente_404(client, db_session):
+    await _crear_usuario_autenticado(db_session)
+    op_token = _token(RolUsuario.OPERADOR)
+
+    response = await client.post(
+        "/api/contenedores/verificar-pin",
+        json={"numero_contenedor": "CSQU3053999", "pin": "1234"},
+        headers={"Authorization": f"Bearer {op_token}"},
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_verificar_pin_estado_no_pendiente_409(client, db_session, enviados_pin):
+    contenedor_id, _ = await _crear_solicitud_con_pin(
+        client, db_session, "00000000-0000-0000-0000-00000000000a", "JJJ101010JJ1", "CSQU3053900"
+    )
+    from sqlalchemy import select as sa_select
+
+    result = await db_session.execute(sa_select(Contenedor).where(Contenedor.id == contenedor_id))
+    contenedor = result.scalar_one()
+    pin_real = contenedor.pin_confirmacion
+
+    await _crear_usuario_autenticado(db_session)
+    op_token = _token(RolUsuario.OPERADOR)
+
+    primera = await client.post(
+        "/api/contenedores/verificar-pin",
+        json={"numero_contenedor": "CSQU3053900", "pin": pin_real},
+        headers={"Authorization": f"Bearer {op_token}"},
+    )
+    assert primera.status_code == 200
+
+    segunda = await client.post(
+        "/api/contenedores/verificar-pin",
+        json={"numero_contenedor": "CSQU3053900", "pin": pin_real},
+        headers={"Authorization": f"Bearer {op_token}"},
+    )
+    assert segunda.status_code == 409
+
+
+@pytest.mark.anyio
+async def test_cliente_no_puede_verificar_pin(client, db_session, enviados_pin):
+    contenedor_id, cliente = await _crear_solicitud_con_pin(
+        client, db_session, "00000000-0000-0000-0000-00000000000b", "KKK111111KK1", "CSQU3053915"
+    )
+    token = create_access_token(
+        "00000000-0000-0000-0000-00000000000b", "cliente", [], 60, cliente_id=str(cliente.id)
+    )
+
+    response = await client.post(
+        "/api/contenedores/verificar-pin",
+        json={"numero_contenedor": "CSQU3053915", "pin": "1234"},
         headers={"Authorization": f"Bearer {token}"},
     )
 

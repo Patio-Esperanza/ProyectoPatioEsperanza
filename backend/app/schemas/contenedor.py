@@ -53,3 +53,24 @@ class ContenedorOut(BaseModel):
     fecha_estimada_retiro: datetime.datetime | None = Field(
         default=None, validation_alias="fecha_estimada_salida"
     )
+
+
+class PinOut(BaseModel):
+    pin_confirmacion: str
+
+
+class PinVerificar(BaseModel):
+    numero_contenedor: str
+    pin: str = Field(min_length=4, max_length=4)
+
+    @field_validator("numero_contenedor")
+    @classmethod
+    def numero_valido(cls, value: str) -> str:
+        return _numero_valido(value)
+
+    @field_validator("pin")
+    @classmethod
+    def pin_valido(cls, value: str) -> str:
+        if not value.isdigit():
+            raise ValueError("pin debe ser 4 dígitos")
+        return value
