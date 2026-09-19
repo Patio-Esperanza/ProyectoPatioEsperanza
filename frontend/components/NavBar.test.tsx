@@ -63,4 +63,26 @@ describe("NavBar", () => {
     rerender(<NavBar />);
     expect(screen.getByText("Usuarios")).toBeInTheDocument();
   });
+
+  it("shows the Solicitar entrada link only for cliente", () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { id: "1", rol: "operador", patios: [] },
+      token: "token",
+      ready: true,
+      setToken: vi.fn(),
+      logout: vi.fn(),
+    });
+    const { rerender } = render(<NavBar />);
+    expect(screen.queryByText("Solicitar entrada")).not.toBeInTheDocument();
+
+    vi.mocked(useAuth).mockReturnValue({
+      user: { id: "1", rol: "cliente", patios: [] },
+      token: "token",
+      ready: true,
+      setToken: vi.fn(),
+      logout: vi.fn(),
+    });
+    rerender(<NavBar />);
+    expect(screen.getByText("Solicitar entrada")).toBeInTheDocument();
+  });
 });
