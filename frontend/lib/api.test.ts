@@ -23,6 +23,9 @@ import {
   solicitarContenedor,
   obtenerPin,
   verificarPin,
+  listarContenedores,
+  solicitarSalida,
+  actualizarPatio,
 } from "./api";
 
 const fetchMock = vi.fn();
@@ -369,6 +372,76 @@ describe("verificarPin", () => {
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({ numero_contenedor: "CSQU3054383", pin: "4821" }),
+      })
+    );
+  });
+});
+
+describe("listarContenedores", () => {
+  it("requests without filters", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse([]));
+
+    await listarContenedores("token");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8000/api/contenedores",
+      expect.objectContaining({ headers: expect.objectContaining({ Authorization: "Bearer token" }) })
+    );
+  });
+
+  it("requests with query filters", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse([]));
+
+    await listarContenedores("token", { estado: "solicitud_salida", patio_id: "p1" });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8000/api/contenedores?estado=solicitud_salida&patio_id=p1",
+      expect.objectContaining({ headers: expect.objectContaining({ Authorization: "Bearer token" }) })
+    );
+  });
+});
+
+describe("solicitarSalida", () => {
+  it("posts fecha_deseada_salida", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        id: "c1",
+        numero_contenedor: "CSQU3054383",
+        tipo: "lleno",
+        tamano: "40",
+        patio_id: "p1",
+        estado: "solicitud_salida",
+        peso_kg: 18000,
+      })
+    );
+
+    const result = await solicitarSalida("token", "c1", "2026-10-05T12:00:00Z");
+
+    expect(result.estado).toBe("solicitud_salida");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8000/api/contenedores/c1/solicitar-salida",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ fecha_deseada_salida: "2026-10-05T12:00:00Z" }),
+      })
+    );
+  });
+});
+
+describe("actualizarPatio", () => {
+  it("patches anticipacion_minima_horas", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 48 })
+    );
+
+    const result = await actualizarPatio("token", "p1", 48);
+
+    expect(result.anticipacion_minima_horas).toBe(48);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8000/api/patios/p1",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ anticipacion_minima_horas: 48 }),
       })
     );
   });

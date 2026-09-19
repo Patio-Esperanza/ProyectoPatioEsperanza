@@ -59,10 +59,23 @@ export interface Patio {
   nombre: string;
   codigo: string;
   activo: boolean;
+  anticipacion_minima_horas: number;
 }
 
 export async function listPatios(token: string): Promise<Patio[]> {
   return request<Patio[]>("/api/patios", { token });
+}
+
+export async function actualizarPatio(
+  token: string,
+  id: string,
+  anticipacion_minima_horas: number
+): Promise<Patio> {
+  return request<Patio>(`/api/patios/${id}`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify({ anticipacion_minima_horas }),
+  });
 }
 
 export async function createPatio(
@@ -101,6 +114,7 @@ export interface Contenedor {
   estado: EstadoContenedor;
   peso_kg: number;
   fecha_estimada_retiro?: string | null;
+  fecha_deseada_salida?: string | null;
 }
 
 export async function createContenedor(
@@ -122,6 +136,30 @@ export async function createContenedor(
 
 export async function getContenedor(token: string, id: string): Promise<Contenedor> {
   return request<Contenedor>(`/api/contenedores/${id}`, { token });
+}
+
+export async function listarContenedores(
+  token: string,
+  filtros?: { estado?: EstadoContenedor; patio_id?: string; cliente_id?: string }
+): Promise<Contenedor[]> {
+  const params = new URLSearchParams();
+  if (filtros?.estado) params.set("estado", filtros.estado);
+  if (filtros?.patio_id) params.set("patio_id", filtros.patio_id);
+  if (filtros?.cliente_id) params.set("cliente_id", filtros.cliente_id);
+  const query = params.toString();
+  return request<Contenedor[]>(`/api/contenedores${query ? `?${query}` : ""}`, { token });
+}
+
+export async function solicitarSalida(
+  token: string,
+  id: string,
+  fecha_deseada_salida: string
+): Promise<Contenedor> {
+  return request<Contenedor>(`/api/contenedores/${id}/solicitar-salida`, {
+    method: "POST",
+    token,
+    body: JSON.stringify({ fecha_deseada_salida }),
+  });
 }
 
 export async function obtenerPin(token: string, id: string): Promise<{ pin_confirmacion: string }> {
