@@ -25,9 +25,13 @@ export function NavBar() {
         {(user.rol === "operador" || user.rol === "supervisor" || user.rol === "admin") && (
           <Link href="/porteria">Portería</Link>
         )}
+        {(user.rol === "operador" || user.rol === "supervisor" || user.rol === "admin") && (
+          <Link href="/salidas">Salidas</Link>
+        )}
         {user.rol === "admin" && <Link href="/usuarios">Usuarios</Link>}
         {user.rol === "admin" && <Link href="/clientes">Clientes</Link>}
         {user.rol === "cliente" && <Link href="/solicitar">Solicitar entrada</Link>}
+        {user.rol === "cliente" && <Link href="/mis-contenedores">Mis contenedores</Link>}
       </div>
       <div className={styles.session}>
         <span className={styles.rol}>{user.rol}</span>

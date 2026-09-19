@@ -129,4 +129,25 @@ describe("NavBar", () => {
     rerender(<NavBar />);
     expect(screen.getByText("Portería")).toBeInTheDocument();
   });
+  it("shows the Mis contenedores link only for cliente", () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { id: "1", rol: "operador", patios: [] },
+      token: "token",
+      ready: true,
+      setToken: vi.fn(),
+      logout: vi.fn(),
+    });
+    const { rerender } = render(<NavBar />);
+    expect(screen.queryByText("Mis contenedores")).not.toBeInTheDocument();
+
+    vi.mocked(useAuth).mockReturnValue({
+      user: { id: "1", rol: "cliente", patios: [] },
+      token: "token",
+      ready: true,
+      setToken: vi.fn(),
+      logout: vi.fn(),
+    });
+    rerender(<NavBar />);
+    expect(screen.getByText("Mis contenedores")).toBeInTheDocument();
+  });
 });
