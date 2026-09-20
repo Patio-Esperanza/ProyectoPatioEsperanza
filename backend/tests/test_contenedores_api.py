@@ -1,6 +1,7 @@
 import uuid
 
 import pytest
+from sqlalchemy import select
 
 from app.core.security import create_access_token
 from app.models.contenedor import Contenedor
@@ -564,3 +565,197 @@ async def test_listar_contenedores_staff_filtra_por_estado_ordenado_por_fecha(cl
     assert response.status_code == 200
     ids = [c["id"] for c in response.json()]
     assert ids == [str(contenedor_id_2), str(contenedor_id_1)]
+
+
+async def _ubicar_contenedor(client, db_session, contenedor_id: str, patio, sufijo: str) -> None:
+    from app.models.ubicacion import Carril, Tira, Tramo, Ubicacion
+
+    carril = Carril(patio_id=patio.id, codigo=f"A-{sufijo}", orden=0)
+    db_session.add(carril)
+    await db_session.flush()
+    tramo = Tramo(carril_id=carril.id, codigo="T1", orden=0)
+    db_session.add(tramo)
+    await db_session.flush()
+    tira = Tira(tramo_id=tramo.id, codigo="S1", orden=0)
+    db_session.add(tira)
+    await db_session.flush()
+    ubicacion = Ubicacion(tira_id=tira.id, nivel=1, codigo=f"UB-{sufijo}")
+    db_session.add(ubicacion)
+    await db_session.commit()
+
+    admin_id = "00000000-0000-0000-0000-0000000000ad"
+    from sqlalchemy import select as sa_select
+
+    existente = await db_session.execute(sa_select(Usuario).where(Usuario.id == uuid.UUID(admin_id)))
+    if existente.scalar_one_or_none() is None:
+        db_session.add(
+            Usuario(
+                id=uuid.UUID(admin_id),
+                tipo=RolUsuario.ADMIN,
+                email="admin-ubicar@patio.mx",
+                password_hash="hash",
+                activo=True,
+            )
+        )
+        await db_session.commit()
+    admin_token = create_access_token(admin_id, "admin", [], 60)
+
+    mov = await client.post(
+        "/api/movimientos",
+        json={
+            "contenedor_id": contenedor_id,
+            "ubicacion_destino_id": str(ubicacion.id),
+            "tipo": "ingreso",
+        },
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert mov.status_code == 201
+
+
+@pytest.mark.anyio
+async def test_solicitar_salida_caso_feliz(client, db_session, enviados_pin):
+    from datetime import datetime, timedelta, timezone
+
+    contenedor_id, cliente = await _crear_solicitud_con_pin(
+        client, db_session, "00000000-0000-0000-0000-000000000010", "PPP161616PP1", "CSQU3060051"
+    )
+    result = await db_session.execute(select(Contenedor).where(Contenedor.id == contenedor_id))
+    patio_id = result.scalar_one().patio_id
+    from app.models.ubicacion import Patio as PatioModel
+
+    patio_result = await db_session.execute(select(PatioModel).where(PatioModel.id == patio_id))
+    patio = patio_result.scalar_one()
+
+    await _ubicar_contenedor(client, db_session, contenedor_id, patio, "SS1")
+
+    token = create_access_token(
+        "00000000-0000-0000-0000-000000000010", "cliente", [], 60, cliente_id=str(cliente.id)
+    )
+    fecha = (datetime.now(timezone.utc) + timedelta(hours=48)).isoformat()
+
+    response = await client.post(
+        f"/api/contenedores/{contenedor_id}/solicitar-salida",
+        json={"fecha_deseada_salida": fecha},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["estado"] == "solicitud_salida"
+
+
+@pytest.mark.anyio
+async def test_solicitar_salida_de_otro_cliente_403(client, db_session, enviados_pin):
+    from datetime import datetime, timedelta, timezone
+    from app.models.cliente import Cliente
+    from app.models.enums import TipoCliente
+
+    contenedor_id, _ = await _crear_solicitud_con_pin(
+        client, db_session, "00000000-0000-0000-0000-000000000011", "QQQ171717QQ1", "CSQU3060067"
+    )
+    result = await db_session.execute(select(Contenedor).where(Contenedor.id == contenedor_id))
+    patio_id = result.scalar_one().patio_id
+    from app.models.ubicacion import Patio as PatioModel
+
+    patio_result = await db_session.execute(select(PatioModel).where(PatioModel.id == patio_id))
+    patio = patio_result.scalar_one()
+    await _ubicar_contenedor(client, db_session, contenedor_id, patio, "SS2")
+
+    otro_cliente = Cliente(
+        razon_social="Intrusa SA", rfc="RRR181818RR1", tipo=TipoCliente.TRANSPORTISTA, activo=True
+    )
+    db_session.add(otro_cliente)
+    await db_session.commit()
+    await db_session.refresh(otro_cliente)
+    db_session.add(
+        Usuario(
+            id=uuid.UUID("00000000-0000-0000-0000-000000000012"),
+            tipo=RolUsuario.CLIENTE,
+            email="intrusa@empresa.mx",
+            password_hash="hash",
+            cliente_id=otro_cliente.id,
+            activo=True,
+        )
+    )
+    await db_session.commit()
+    otro_token = create_access_token(
+        "00000000-0000-0000-0000-000000000012", "cliente", [], 60, cliente_id=str(otro_cliente.id)
+    )
+    fecha = (datetime.now(timezone.utc) + timedelta(hours=48)).isoformat()
+
+    response = await client.post(
+        f"/api/contenedores/{contenedor_id}/solicitar-salida",
+        json={"fecha_deseada_salida": fecha},
+        headers={"Authorization": f"Bearer {otro_token}"},
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.anyio
+async def test_solicitar_salida_estado_no_ubicado_409(client, db_session, enviados_pin):
+    from datetime import datetime, timedelta, timezone
+
+    contenedor_id, cliente = await _crear_solicitud_con_pin(
+        client, db_session, "00000000-0000-0000-0000-000000000013", "SSS191919SS1", "CSQU3060072"
+    )
+    token = create_access_token(
+        "00000000-0000-0000-0000-000000000013", "cliente", [], 60, cliente_id=str(cliente.id)
+    )
+    fecha = (datetime.now(timezone.utc) + timedelta(hours=48)).isoformat()
+
+    response = await client.post(
+        f"/api/contenedores/{contenedor_id}/solicitar-salida",
+        json={"fecha_deseada_salida": fecha},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 409
+
+
+@pytest.mark.anyio
+async def test_solicitar_salida_antes_de_anticipacion_minima_422(client, db_session, enviados_pin):
+    from datetime import datetime, timedelta, timezone
+
+    contenedor_id, cliente = await _crear_solicitud_con_pin(
+        client, db_session, "00000000-0000-0000-0000-000000000014", "TTT202020TT1", "CSQU3060088"
+    )
+    result = await db_session.execute(select(Contenedor).where(Contenedor.id == contenedor_id))
+    patio_id = result.scalar_one().patio_id
+    from app.models.ubicacion import Patio as PatioModel
+
+    patio_result = await db_session.execute(select(PatioModel).where(PatioModel.id == patio_id))
+    patio = patio_result.scalar_one()
+    await _ubicar_contenedor(client, db_session, contenedor_id, patio, "SS3")
+
+    token = create_access_token(
+        "00000000-0000-0000-0000-000000000014", "cliente", [], 60, cliente_id=str(cliente.id)
+    )
+    fecha = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
+
+    response = await client.post(
+        f"/api/contenedores/{contenedor_id}/solicitar-salida",
+        json={"fecha_deseada_salida": fecha},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 422
+
+
+@pytest.mark.anyio
+async def test_solicitar_salida_contenedor_inexistente_404(client, db_session):
+    await _crear_usuario_autenticado(db_session)
+    token = create_access_token(
+        "00000000-0000-0000-0000-000000000001", "cliente", [], 60,
+        cliente_id="00000000-0000-0000-0000-000000000099",
+    )
+    from datetime import datetime, timedelta, timezone
+
+    fecha = (datetime.now(timezone.utc) + timedelta(hours=48)).isoformat()
+
+    response = await client.post(
+        "/api/contenedores/00000000-0000-0000-0000-0000000000ff/solicitar-salida",
+        json={"fecha_deseada_salida": fecha},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 404

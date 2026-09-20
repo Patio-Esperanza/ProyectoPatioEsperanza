@@ -53,6 +53,7 @@ class ContenedorOut(BaseModel):
     fecha_estimada_retiro: datetime.datetime | None = Field(
         default=None, validation_alias="fecha_estimada_salida"
     )
+    fecha_deseada_salida: datetime.datetime | None = None
 
 
 class PinOut(BaseModel):
@@ -74,3 +75,7 @@ class PinVerificar(BaseModel):
         if not value.isdigit():
             raise ValueError("pin debe ser 4 dígitos")
         return value
+
+
+class SolicitudSalida(BaseModel):
+    fecha_deseada_salida: datetime.datetime

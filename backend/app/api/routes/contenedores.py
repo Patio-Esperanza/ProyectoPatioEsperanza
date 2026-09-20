@@ -1,3 +1,4 @@
+import datetime
 import secrets
 import uuid
 
@@ -20,6 +21,7 @@ from app.schemas.contenedor import (
     ContenedorSolicitud,
     PinOut,
     PinVerificar,
+    SolicitudSalida,
 )
 
 router = APIRouter()
@@ -191,6 +193,66 @@ async def verificar_pin(
         entidad="contenedores",
         entidad_id=str(contenedor.id),
         valor_anterior={"estado": EstadoContenedor.SOLICITUD_INGRESO.value},
+        valor_nuevo={"estado": contenedor.estado.value},
+        patio_id=contenedor.patio_id,
+    )
+    await db.commit()
+    await db.refresh(contenedor)
+    return contenedor
+
+
+@router.post("/{contenedor_id}/solicitar-salida", response_model=ContenedorOut)
+async def solicitar_salida(
+    contenedor_id: str,
+    payload: SolicitudSalida,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(require_roles(RolUsuario.CLIENTE)),
+) -> Contenedor:
+    result = await db.execute(select(Contenedor).where(Contenedor.id == contenedor_id))
+    contenedor = result.scalar_one_or_none()
+    if contenedor is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Contenedor no encontrado")
+
+    if contenedor.cliente_id != user.cliente_id:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "No autorizado para solicitar la salida de este contenedor"
+        )
+
+    if contenedor.estado != EstadoContenedor.UBICADO:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Este contenedor no está disponible para solicitar salida"
+        )
+
+    patio_result = await db.execute(select(Patio).where(Patio.id == contenedor.patio_id))
+    patio = patio_result.scalar_one()
+
+    fecha_deseada = payload.fecha_deseada_salida
+    if fecha_deseada.tzinfo is None:
+        fecha_deseada = fecha_deseada.replace(tzinfo=datetime.timezone.utc)
+    minimo = datetime.timedelta(hours=patio.anticipacion_minima_horas)
+    ahora = datetime.datetime.now(datetime.timezone.utc)
+    if fecha_deseada < ahora + minimo:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"La fecha de salida debe ser al menos {patio.anticipacion_minima_horas} horas "
+            "después de ahora para este patio",
+        )
+
+    contenedor.estado = EstadoContenedor.SOLICITUD_SALIDA
+    contenedor.fecha_deseada_salida = fecha_deseada
+    contenedor.salida_solicitada_en = func.now()
+
+    await registrar_auditoria(
+        db,
+        usuario_id=user.id,
+        rol=user.rol.value,
+        ip=request.client.host if request.client else "desconocida",
+        dispositivo=request.headers.get("user-agent", "desconocido"),
+        accion="solicitar_salida",
+        entidad="contenedores",
+        entidad_id=str(contenedor.id),
+        valor_anterior={"estado": EstadoContenedor.UBICADO.value},
         valor_nuevo={"estado": contenedor.estado.value},
         patio_id=contenedor.patio_id,
     )
