@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import func
 
-from app.api.deps import CurrentUser, get_current_user, get_scoped_db, require_roles
+from app.api.deps import CurrentUser, get_current_user, require_roles
 from app.core.auditoria import registrar_auditoria
 from app.core.email import enviar_correo
 from app.db import get_db
@@ -282,7 +282,7 @@ async def obtener_pin(
 @router.get("/{contenedor_id}", response_model=ContenedorOut)
 async def obtener_contenedor(
     contenedor_id: str,
-    db: AsyncSession = Depends(get_scoped_db),
+    db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
 ) -> Contenedor:
     result = await db.execute(select(Contenedor).where(Contenedor.id == contenedor_id))

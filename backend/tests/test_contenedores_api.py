@@ -12,8 +12,8 @@ from app.models.usuario import Usuario
 _USUARIO_ID = "00000000-0000-0000-0000-000000000001"
 
 
-def _token(rol: RolUsuario) -> str:
-    return create_access_token(_USUARIO_ID, rol.value, [], 60)
+def _token(rol: RolUsuario, patios: list[str] | None = None) -> str:
+    return create_access_token(_USUARIO_ID, rol.value, patios or [], 60)
 
 
 async def _crear_usuario_autenticado(db_session) -> None:
@@ -39,7 +39,7 @@ async def test_operador_crea_contenedor(client, db_session):
     )
     patio_id = patio_resp.json()["id"]
 
-    op_token = _token(RolUsuario.OPERADOR)
+    op_token = _token(RolUsuario.OPERADOR, patios=[patio_id])
     response = await client.post(
         "/api/contenedores",
         json={
@@ -354,10 +354,12 @@ async def test_cliente_de_otra_empresa_no_ve_pin(client, db_session, enviados_pi
 @pytest.mark.anyio
 async def test_operador_no_ve_pin(client, db_session, enviados_pin):
     await _crear_usuario_autenticado(db_session)
-    op_token = _token(RolUsuario.OPERADOR)
     contenedor_id, _ = await _crear_solicitud_con_pin(
         client, db_session, "00000000-0000-0000-0000-000000000006", "GGG070707GG7", "CSQU3053875"
     )
+    result = await db_session.execute(select(Contenedor).where(Contenedor.id == contenedor_id))
+    patio_id = str(result.scalar_one().patio_id)
+    op_token = _token(RolUsuario.OPERADOR, patios=[patio_id])
 
     response = await client.get(
         f"/api/contenedores/{contenedor_id}/pin",
@@ -390,9 +392,10 @@ async def test_operador_verifica_pin_correcto(client, db_session, enviados_pin):
     result = await db_session.execute(sa_select(Contenedor).where(Contenedor.id == contenedor_id))
     contenedor = result.scalar_one()
     pin_real = contenedor.pin_confirmacion
+    patio_id = str(contenedor.patio_id)
 
     await _crear_usuario_autenticado(db_session)
-    op_token = _token(RolUsuario.OPERADOR)
+    op_token = _token(RolUsuario.OPERADOR, patios=[patio_id])
 
     response = await client.post(
         "/api/contenedores/verificar-pin",
@@ -410,11 +413,13 @@ async def test_operador_verifica_pin_correcto(client, db_session, enviados_pin):
 
 @pytest.mark.anyio
 async def test_verificar_pin_incorrecto_422(client, db_session, enviados_pin):
-    await _crear_solicitud_con_pin(
+    contenedor_id, _ = await _crear_solicitud_con_pin(
         client, db_session, "00000000-0000-0000-0000-000000000008", "III090909II9", "CSQU3053896"
     )
+    result = await db_session.execute(select(Contenedor).where(Contenedor.id == contenedor_id))
+    patio_id = str(result.scalar_one().patio_id)
     await _crear_usuario_autenticado(db_session)
-    op_token = _token(RolUsuario.OPERADOR)
+    op_token = _token(RolUsuario.OPERADOR, patios=[patio_id])
 
     response = await client.post(
         "/api/contenedores/verificar-pin",
@@ -450,9 +455,10 @@ async def test_verificar_pin_estado_no_pendiente_409(client, db_session, enviado
     result = await db_session.execute(sa_select(Contenedor).where(Contenedor.id == contenedor_id))
     contenedor = result.scalar_one()
     pin_real = contenedor.pin_confirmacion
+    patio_id = str(contenedor.patio_id)
 
     await _crear_usuario_autenticado(db_session)
-    op_token = _token(RolUsuario.OPERADOR)
+    op_token = _token(RolUsuario.OPERADOR, patios=[patio_id])
 
     primera = await client.post(
         "/api/contenedores/verificar-pin",

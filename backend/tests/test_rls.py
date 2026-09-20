@@ -71,3 +71,24 @@ async def test_admin_ve_todos_los_patios(db_session):
     visibles = result.scalars().all()
 
     assert len(visibles) >= 2
+
+
+@pytest.mark.anyio
+async def test_cliente_bypassa_restriccion_de_patio(db_session):
+    patio_1 = Patio(nombre="Patio Cinco", codigo="RLS5")
+    db_session.add(patio_1)
+    await db_session.flush()
+    db_session.add(
+        Contenedor(
+            numero_contenedor="CSQU3054383", tipo=TipoContenedor.LLENO, tamano=TamanoContenedor.CUARENTA,
+            patio_id=patio_1.id, estado=EstadoContenedor.SOLICITUD_INGRESO, peso_kg=18000,
+        )
+    )
+    await db_session.commit()
+
+    await db_session.execute(text("SELECT set_config('app.rol', 'cliente', false)"))
+    await db_session.execute(text("SELECT set_config('app.patios_asignados', '', false)"))
+    result = await db_session.execute(select(Contenedor))
+    visibles = result.scalars().all()
+
+    assert len(visibles) >= 1

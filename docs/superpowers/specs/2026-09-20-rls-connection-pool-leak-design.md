@@ -57,7 +57,9 @@ Dos cambios, ambos necesarios — uno solo no alcanza:
 
    Con esto, ninguna ruta depende ya de que el GUC esté "sin tocar" (`IS NULL`) — todas lo fijan explícitamente con el rol real del usuario autenticado en cada request.
 
-2. **La política RLS deja de tener una rama que falla abierta (`IS NULL OR ...`).** Ya no hace falta — el punto 1 garantiza que el GUC siempre está fijado por una fuente confiable antes de cualquier query. Se reemplaza `IS NULL OR` por una rama explícita para `cliente` (`current_setting('app.rol', true) = 'cliente'`): el rol `cliente` nunca estuvo filtrado por patio (su autorización es por `cliente_id`, en Python, ya implementada en cada endpoint) — dejar pasar explícitamente ese rol documenta la intención real en vez de depender de un efecto colateral de "GUC nunca tocado". Quitar la rama `IS NULL` cierra el fail-open por completo: cualquier conexión que por algún motivo futuro no pase por `get_current_user` queda bloqueada (fail-closed) en vez de expuesta sin filtro.
+2. **La política RLS gana una rama explícita para `cliente`.** El rol `cliente` nunca estuvo filtrado por patio (su autorización es por `cliente_id`, en Python, ya implementada en cada endpoint) — dejar pasar explícitamente ese rol documenta la intención real en vez de depender de un efecto colateral. Se agrega `OR current_setting('app.rol', true) = 'cliente'` junto a la rama de `'admin'`.
+
+   **Decisión revisada durante la implementación:** el plan original proponía además quitar la rama `IS NULL OR` (fail-open) para cerrar el escape por completo. Al implementarlo, rompió 13 tests que construyen filas directamente vía ORM sobre `db_session` (`test_contenedor_models.py`, `test_ubicacion_algoritmo.py`, `test_auditoria.py`) — código que nunca pasa por `get_current_user` a propósito (no son requests HTTP, son tests de modelo/algoritmo) y legítimamente depende de que el GUC "sin tocar" dé paso libre. Quitar esa rama cambia el contrato para ese tipo de acceso, no solo cierra el bug de fuga. Se mantiene `IS NULL OR` — el punto 1 (fijar siempre en cada request HTTP real) ya garantiza que ningún request de la aplicación depende de esa rama para su propio contexto; la rama solo sigue sirviendo a código que deliberadamente nunca pasa por la capa de auth.
 
 ## Alternativas consideradas y descartadas
 
@@ -70,8 +72,8 @@ Dos cambios, ambos necesarios — uno solo no alcanza:
 El fixture existente (`db_session`/`client`, una sola conexión con savepoints) **no puede reproducir el bug** — se necesita un test que use el engine real (`app.db.engine`/`SessionLocal`) con una conexión explícita reutilizada entre dos "requests" simulados, igual que el diagnóstico manual de esta sesión.
 
 - `backend/tests/test_deps_rls_context.py` (nuevo): usa `engine.connect()` directo (una sola conexión física, reuso garantizado, determinístico) para simular dos requests consecutivos con roles distintos (`admin` → `operador`) y confirmar que `get_current_user` deja el GUC en el valor correcto para el *segundo* request, no en un residuo del primero.
-- `backend/tests/test_rls.py` (ampliado): rama `cliente` de la política dejando ver filas sin restricción de patio; confirmar que sin ningún GUC fijado (simulando una conexión que se saltara `get_current_user`, escenario que ya no debería ocurrir) la política ahora bloquea (fail-closed) en vez de dejar pasar.
-- Suite completa de pytest debe seguir en verde (ningún endpoint depende hoy de la rama `IS NULL` a propósito).
+- `backend/tests/test_rls.py` (ampliado): rama `cliente` de la política dejando ver filas sin restricción de patio.
+- Suite completa de pytest debe seguir en verde. Efecto colateral esperado y corregido: varios tests de `operador` que nunca fijaban `patios` en su token pasaban antes por accidente (RLS inerte); ahora que `get_current_user` fija el contexto siempre, esos tokens necesitan `patios=[patio_id_real]` para reflejar lo que la política siempre debió exigir. Se corrigieron en `test_contenedores_api.py` y `test_movimientos_api.py`.
 - Verificación manual en navegador: repetir la secuencia exacta que reprodujo el bug (`GET /{id}` como admin → `GET /{id}/pin`) contra el servidor real, confirmar 200 con el PIN correcto.
 
 ## Fuera de alcance

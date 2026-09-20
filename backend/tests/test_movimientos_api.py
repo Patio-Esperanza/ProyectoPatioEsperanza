@@ -110,7 +110,7 @@ async def test_no_permite_mover_a_slot_ocupado(client, db_session):
     db_session.add(ubicacion)
     await db_session.commit()
 
-    op_token = _token(RolUsuario.OPERADOR)
+    op_token = _token(RolUsuario.OPERADOR, patios=[patio["id"]])
 
     async def _crear_y_mover(numero: str) -> int:
         contenedor_resp = await client.post(

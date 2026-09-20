@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import decode_access_token
@@ -41,12 +41,28 @@ async def get_current_user(
 
     cliente_id_claim = payload.get("cliente_id")
 
-    return CurrentUser(
+    current_user = CurrentUser(
         id=usuario.id,
         rol=RolUsuario(payload["rol"]),
         patios=[uuid.UUID(p) for p in payload.get("patios", [])],
         cliente_id=uuid.UUID(cliente_id_claim) if cliente_id_claim else None,
     )
+
+    # Fija el contexto de RLS en cada request autenticado, siempre — nunca depender de
+    # que el GUC quede "sin tocar". Una vez que Postgres crea el placeholder de una GUC
+    # personalizada (aunque sea con SET LOCAL luego revertido), current_setting(..., true)
+    # nunca vuelve a NULL en esa conexión del pool: queda en '' indefinidamente. Si algún
+    # otro request ya la tocó antes, un request que no fije el GUC vería ese residuo, no
+    # "sin restricción".
+    await db.execute(
+        text("SELECT set_config('app.rol', :rol, true)"), {"rol": current_user.rol.value}
+    )
+    await db.execute(
+        text("SELECT set_config('app.patios_asignados', :patios, true)"),
+        {"patios": ",".join(str(p) for p in current_user.patios)},
+    )
+
+    return current_user
 
 
 def require_roles(*roles: RolUsuario):
@@ -56,17 +72,3 @@ def require_roles(*roles: RolUsuario):
         return user
 
     return dependency
-
-
-from sqlalchemy import text
-
-
-async def get_scoped_db(
-    user: CurrentUser = Depends(get_current_user), db: AsyncSession = Depends(get_db)
-) -> AsyncSession:
-    await db.execute(text("SELECT set_config('app.rol', :rol, true)"), {"rol": user.rol.value})
-    await db.execute(
-        text("SELECT set_config('app.patios_asignados', :patios, true)"),
-        {"patios": ",".join(str(p) for p in user.patios)},
-    )
-    return db
