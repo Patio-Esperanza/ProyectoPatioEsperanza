@@ -1,6 +1,6 @@
 # Contexto del proyecto — Patio Esperanza
 
-Última actualización: 2026-09-20. Rama `master`, working tree limpio, último commit `ecbcce2`.
+Última actualización: 2026-09-20. Rama `master`, último commit `8db0890`.
 
 ## Qué es
 
@@ -52,7 +52,11 @@ docker/initdb/            Scripts de inicialización de la base de datos
 Ambas suites corren en verde al momento de escribir este documento.
 
 - Backend: `82 passed` (`cd backend && pytest`)
-- Frontend: `82 passed` en 22 archivos (`cd frontend && npx vitest run`)
+- Frontend: `100 passed` en 24 archivos (`cd frontend && npx vitest run`)
+- `cd frontend && npx tsc --noEmit` sale limpio.
+
+`npm run lint` no funciona: el repositorio nunca tuvo `.eslintrc` y `next lint` pide
+crearlo de forma interactiva. Queda pendiente configurarlo.
 
 ## Endpoints implementados
 
@@ -231,21 +235,31 @@ La transición de `solicitud_salida` a `despachado` sigue sin implementarse.
 
 ## Pendientes
 
-### 1. Bugs de autenticación en el frontend (prioridad alta)
+### 1. Rediseño de la interfaz, fases 1 y 2 (en curso)
 
-Detectados durante pruebas E2E en navegador el 2026-09-20 y aprobados por el usuario como
-tarea aparte. Ninguno está corregido todavía.
+Spec: `docs/superpowers/specs/2026-09-20-auth-frontend-y-rediseno-ui-design.md`.
 
-- **`AuthGuard` no valida el rol.** `frontend/components/AuthGuard.tsx` solo comprueba que
-  exista un usuario; cualquier sesión válida entra a cualquier ruta. Se verificó que un
-  usuario con rol `cliente` abre `/patios`. El `NavBar` sí filtra los enlaces por rol, pero
-  eso es cosmético: la ruta sigue accesible si se escribe la URL.
-- **El botón "Salir" no cierra la sesión.** `logout` en `lib/auth-context.tsx` limpia
-  `localStorage` y el estado, pero no redirige. La página queda montada hasta que algo la
-  vuelva a renderizar.
-- **El formulario de login falla de forma intermitente.** En una prueba el clic en "Entrar"
-  nunca llegó al backend: la página se quedó en `/login` sin petición HTTP saliente. La causa
-  no está diagnosticada.
+Hecho (`c770b24`, `8db0890`):
+
+- Los tres bugs de autorización del frontend. `AuthGuard` acepta `roles`, el mapa de rutas
+  vive en `lib/rutas.ts` derivado de `require_roles` del backend, y un rol no permitido ve
+  una pantalla explicativa. Se quitó el chequeo de rol duplicado que traían seis páginas.
+- `logout` sigue puro y la navegación es explícita en quien lo llama.
+- Sistema de tokens en dos capas, con paleta oscura definida pero no activada.
+- `AppShell` con `Sidebar`: permanente desde 1024px, drawer en móvil, secciones filtradas
+  por rol contra la misma fuente que el guard. `NavBar` eliminado.
+
+Pendiente:
+
+- Nueve componentes compartidos en `components/ui/`: `Button`, `Field`, `Card`,
+  `DataTable`, `Badge`, `EmptyState`, `Skeleton`, `Alert`, `PageHeader`.
+- Migrar las páginas piloto `/login`, `/patios` y `/contenedores`, y después las once
+  restantes.
+- Borrar los alias temporales de variables CSS de `globals.css` cuando ya nadie los use.
+
+El fallo intermitente del formulario de login **sigue sin causa raíz**. En una prueba el
+clic en "Entrar" no produjo ninguna petición HTTP. Se instrumentó para distinguir un fallo
+de red de uno de credenciales, pero no se ha reproducido desde entonces.
 
 ### 2. Flujo de QR (no diseñado)
 
@@ -294,6 +308,12 @@ De la spec del fix de RLS:
   con una sesión nueva de SQLAlchemy sobre la misma conexión física. Cualquier código que
   asigne GUC debe hacerlo en todos los requests, no solo en algunos.
 - No existe endpoint de alta del primer usuario admin. Se siembra manualmente con `psql`.
+- Los roles `guardia` y `despachador` existen en `RolUsuario` pero ningún endpoint los
+  acepta para escribir. Un usuario con esos roles se autentica y no puede hacer nada, ni
+  tiene una sola ruta propia en la navegación.
+- `globals.css` conserva alias temporales de los nombres viejos de variables
+  (`--azul`, `--surface`, `--border`, ...) porque las páginas sin migrar los usan. Se
+  borran al cerrar la Fase 2 del rediseño.
 - Las casillas de verificación de los planes en `docs/superpowers/plans/` nunca se marcaron.
   No sirven para saber qué está hecho. El historial de git es la fuente confiable.
 
