@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { login, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { Alert, Button, Field } from "@/components/ui";
 import styles from "./page.module.css";
 
 /**
@@ -48,31 +50,47 @@ export default function LoginPage() {
   return (
     <main className={styles.main}>
       <form className={styles.card} onSubmit={handleSubmit}>
-        <h1>Patio Esperanza</h1>
-        <label htmlFor="email">Correo</label>
-        <input
+        <div className={styles.marca}>
+          <Image
+            src="/EsperanzaLogo.png"
+            alt="Patio Esperanza"
+            width={160}
+            height={107}
+            priority
+          />
+        </div>
+
+        <div className={styles.encabezado}>
+          <h1 className={styles.titulo}>Iniciar sesión</h1>
+          <p className={styles.subtitulo}>Gestión de patio de contenedores</p>
+        </div>
+
+        {error && <Alert tone="danger">{error}</Alert>}
+
+        <Field
+          label="Correo"
           id="email"
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
+          // Deja que el gestor de contraseñas del navegador rellene la pareja.
+          autoComplete="username"
         />
-        <label htmlFor="password">Contraseña</label>
-        <input
+
+        <Field
+          label="Contraseña"
           id="password"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
+          autoComplete="current-password"
         />
-        {error && (
-          <p role="alert" className={styles.error}>
-            {error}
-          </p>
-        )}
-        <button type="submit" disabled={submitting}>
-          {submitting ? "Entrando..." : "Entrar"}
-        </button>
+
+        <Button type="submit" loading={submitting} className={styles.enviar}>
+          Entrar
+        </Button>
       </form>
     </main>
   );

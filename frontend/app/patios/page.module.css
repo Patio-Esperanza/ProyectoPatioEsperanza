@@ -1,56 +1,46 @@
 .main {
-  max-width: 720px;
-  margin: 32px auto;
-  padding: 0 20px;
+  max-width: var(--ancho-contenido);
+  margin-inline: auto;
+  padding: var(--space-6) var(--space-4) var(--space-12);
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--space-6);
 }
 
-.list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.formulario {
+  /* El formulario no necesita todo el ancho de la tabla: se limita a una medida cómoda. */
+  max-width: var(--ancho-lectura);
+}
+
+.tituloFormulario {
+  margin-bottom: var(--space-4);
+  font-size: var(--text-lg);
+}
+
+.campos {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
-.list li {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px 14px;
-}
-
-.form {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 16px;
-}
-
-.form input {
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-}
-
-.form button {
+.enviar {
   align-self: flex-start;
-  background: var(--azul);
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  padding: 8px 16px;
 }
 
-.error {
-  color: var(--danger);
-  background: var(--danger-soft);
-  padding: 8px 10px;
-  border-radius: 6px;
+/* Empuja el campo al borde derecho de su celda, igual que el encabezado de la columna. */
+.celdaAnticipacion {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* El campo va dentro de una celda: sin ancho propio estiraría la columna. */
+.anticipacion {
+  max-width: 110px;
+  text-align: end;
+}
+
+@media (min-width: 768px) {
+  .main {
+    padding-inline: var(--space-6);
+  }
 }

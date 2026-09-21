@@ -5,6 +5,16 @@ import { AuthGuard } from "@/components/AuthGuard";
 import { ROLES_POR_RUTA } from "@/lib/rutas";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError, actualizarPatio, createPatio, listPatios, type Patio } from "@/lib/api";
+import {
+  Alert,
+  Button,
+  Card,
+  DataTable,
+  EmptyState,
+  Field,
+  PageHeader,
+  SkeletonText,
+} from "@/components/ui";
 import styles from "./page.module.css";
 
 function PatiosContent() {
@@ -15,6 +25,8 @@ function PatiosContent() {
   const [nombre, setNombre] = useState("");
   const [codigo, setCodigo] = useState("");
   const [creating, setCreating] = useState(false);
+
+  const esAdmin = user?.rol === "admin";
 
   const cargarPatios = useCallback(async () => {
     if (!token) return;
@@ -61,51 +73,113 @@ function PatiosContent() {
     }
   }
 
+  const columnas = [
+    { key: "codigo", header: "Código", mono: true },
+    { key: "nombre", header: "Nombre" },
+    ...(esAdmin
+      ? [{ key: "anticipacion", header: "Anticipación mínima (h)", align: "end" as const }]
+      : []),
+  ];
+
+  function renderCelda(patio: Patio, key: string) {
+    if (key === "codigo") return patio.codigo;
+    if (key === "nombre") return patio.nombre;
+    return (
+      // El envoltorio de Field es un bloque y llenaría la celda, dejando el campo pegado
+      // a la izquierda aunque la columna esté alineada a la derecha.
+      <span className={styles.celdaAnticipacion}>
+        <Field
+          // La etiqueta lleva el código del patio porque hay un campo por fila y, sin él,
+          // un lector de pantalla oiría la misma etiqueta repetida en toda la tabla.
+          label={`Anticipación mínima (h) — ${patio.codigo}`}
+          // El encabezado de la columna ya muestra el nombre del campo: repetirlo en cada
+          // fila sería ruido. Sigue anunciándose a los lectores de pantalla.
+          labelHidden
+          id={`anticipacion-${patio.id}`}
+          type="number"
+          min={1}
+          defaultValue={patio.anticipacion_minima_horas}
+          onBlur={(e) => handleActualizarAnticipacion(patio.id, Number(e.target.value))}
+          className={styles.anticipacion}
+        />
+      </span>
+    );
+  }
+
   return (
     <main className={styles.main}>
-      <h1>Patios</h1>
+      <PageHeader
+        titulo="Patios"
+        descripcion="Patios registrados y su tiempo mínimo de anticipación para solicitar salida."
+      />
+
       {error && (
-        <p role="alert" className={styles.error}>
-          {error}
-        </p>
-      )}
-      {loading ? (
-        <p>Cargando...</p>
-      ) : (
-        <ul className={styles.list}>
-          {patios.map((patio) => (
-            <li key={patio.id}>
-              <span className="mono">{patio.codigo}</span> — {patio.nombre}
-              {user?.rol === "admin" && (
-                <span className={styles.anticipacion}>
-                  <label htmlFor={`anticipacion-${patio.id}`}>
-                    Anticipación mínima (h) — {patio.codigo}
-                  </label>
-                  <input
-                    id={`anticipacion-${patio.id}`}
-                    type="number"
-                    min={1}
-                    defaultValue={patio.anticipacion_minima_horas}
-                    onBlur={(e) => handleActualizarAnticipacion(patio.id, Number(e.target.value))}
-                  />
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
+        <Alert tone="danger">
+          {error}{" "}
+          <Button variant="ghost" size="sm" onClick={cargarPatios}>
+            Reintentar
+          </Button>
+        </Alert>
       )}
 
-      {user?.rol === "admin" && (
-        <form className={styles.form} onSubmit={handleCrear}>
-          <h2>Nuevo patio</h2>
-          <label htmlFor="nombre">Nombre</label>
-          <input id="nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} required />
-          <label htmlFor="codigo">Código</label>
-          <input id="codigo" value={codigo} onChange={(e) => setCodigo(e.target.value)} required />
-          <button type="submit" disabled={creating}>
-            {creating ? "Creando..." : "Crear patio"}
-          </button>
-        </form>
+      {loading ? (
+        <Card>
+          <p className="sr-only" role="status">
+            Cargando patios
+          </p>
+          <SkeletonText lines={4} />
+        </Card>
+      ) : error ? (
+        /*
+         * Con la carga fallida no se sabe si hay patios o no. Mostrar aquí el estado
+         * vacío afirmaría algo falso: la alerta de arriba ya explica qué pasó.
+         */
+        null
+      ) : patios.length === 0 ? (
+        <EmptyState
+          titulo="Todavía no hay patios"
+          descripcion={
+            esAdmin
+              ? "Crea el primero con el formulario de abajo."
+              : "Pídele a un administrador que registre el primer patio."
+          }
+        />
+      ) : (
+        <Card>
+          <DataTable
+            columns={columnas}
+            rows={patios}
+            getRowKey={(patio) => patio.id}
+            renderCell={renderCelda}
+            caption="Patios registrados"
+          />
+        </Card>
+      )}
+
+      {esAdmin && (
+        <Card className={styles.formulario}>
+          <h2 className={styles.tituloFormulario}>Nuevo patio</h2>
+          <form className={styles.campos} onSubmit={handleCrear}>
+            <Field
+              label="Nombre"
+              id="nombre"
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              required
+            />
+            <Field
+              label="Código"
+              id="codigo"
+              value={codigo}
+              onChange={(e) => setCodigo(e.target.value)}
+              hint="Identificador corto del patio, por ejemplo PN."
+              required
+            />
+            <Button type="submit" loading={creating} className={styles.enviar}>
+              Crear patio
+            </Button>
+          </form>
+        </Card>
       )}
     </main>
   );

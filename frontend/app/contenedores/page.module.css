@@ -1,48 +1,65 @@
 .main {
-  max-width: 480px;
-  margin: 32px auto;
-  padding: 0 20px;
+  max-width: var(--ancho-contenido);
+  margin-inline: auto;
+  padding: var(--space-6) var(--space-4) var(--space-12);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-6);
 }
 
-.form {
+.formulario {
+  /* Formulario de una columna: una medida de lectura cómoda, no todo el ancho. */
+  max-width: var(--ancho-lectura);
+}
+
+.campos {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 16px;
+  gap: var(--space-4);
 }
 
-.form input,
-.form select {
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+/* Tipo y tamaño son cortos y relacionados: van juntos en una fila cuando hay sitio. */
+.fila {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
 }
 
-.form button {
+.selector {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.etiqueta {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-on-surface);
+}
+
+.select {
+  min-height: var(--alto-toque);
+  padding-inline: var(--space-3);
+  font-family: inherit;
+  font-size: var(--text-base);
+  color: var(--color-on-surface);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.enviar {
   align-self: flex-start;
-  background: var(--azul);
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  padding: 8px 16px;
 }
 
-.error {
-  color: var(--danger);
-  background: var(--danger-soft);
-  padding: 8px 10px;
-  border-radius: 6px;
+@media (min-width: 640px) {
+  .fila {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
-.ok {
-  color: #2e7d46;
-  background: #e4f2e8;
-  padding: 8px 10px;
-  border-radius: 6px;
+@media (min-width: 768px) {
+  .main {
+    padding-inline: var(--space-6);
+  }
 }

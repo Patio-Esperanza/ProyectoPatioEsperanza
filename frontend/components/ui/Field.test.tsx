@@ -46,10 +46,17 @@ describe("Field", () => {
     expect(screen.getByRole("alert")).toHaveAttribute("id", "nombre-error");
   });
 
-  it("announces required without reading the asterisk", () => {
+  it("marks required through the input attribute, keeping the name clean", () => {
     render(<Field id="nombre" label="Nombre" required />);
-    expect(screen.getByRole("textbox", { name: "Nombre (obligatorio)" })).toBeRequired();
+    // El nombre accesible es solo la etiqueta: el asterisco es decorativo y la obligación
+    // la comunica el atributo required, no un texto pegado al nombre del campo.
+    expect(screen.getByRole("textbox", { name: "Nombre" })).toBeRequired();
     expect(screen.getByText("*")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("keeps the label available to assistive tech when hidden visually", () => {
+    render(<Field id="horas" label="Anticipación mínima (h)" labelHidden />);
+    expect(screen.getByRole("textbox", { name: "Anticipación mínima (h)" })).toBeInTheDocument();
   });
 
   it("preserves external descriptions and native attributes", () => {

@@ -4,10 +4,22 @@
   gap: var(--space-2);
 }
 
+.filaEtiqueta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+}
+
 .etiqueta {
   color: var(--color-on-surface);
   font-size: var(--text-sm);
   font-weight: 600;
+}
+
+.obligatorio {
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+  line-height: 1;
 }
 
 .input {

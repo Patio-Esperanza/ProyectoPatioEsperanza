@@ -57,7 +57,10 @@ describe("ContenedoresPage", () => {
       patio_id: "p1",
       peso_kg: 18000,
     });
-    expect(await screen.findByText(/estado solicitud_ingreso/)).toBeInTheDocument();
+    // El estado se muestra en un Badge aparte, así que el texto no es contiguo.
+    const confirmacion = await screen.findByRole("status");
+    expect(confirmacion).toHaveTextContent("CSQU3054383");
+    expect(confirmacion).toHaveTextContent("solicitud_ingreso");
   });
 
   it("shows the backend error message on failure", async () => {

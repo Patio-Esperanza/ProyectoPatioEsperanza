@@ -12,6 +12,7 @@ import {
   type TamanoContenedor,
   type TipoContenedor,
 } from "@/lib/api";
+import { Alert, Badge, Button, Card, Field, PageHeader } from "@/components/ui";
 import styles from "./page.module.css";
 
 function ContenedoresContent() {
@@ -51,61 +52,92 @@ function ContenedoresContent() {
 
   return (
     <main className={styles.main}>
-      <h1>Contenedores</h1>
-      {error && (
-        <p role="alert" className={styles.error}>
-          {error}
-        </p>
-      )}
+      <PageHeader
+        titulo="Contenedores"
+        descripcion="Alta de contenedor en el patio. El número se valida contra el checksum ISO 6346."
+      />
+
+      {error && <Alert tone="danger">{error}</Alert>}
+
       {creado && (
-        <p className={styles.ok}>
-          Creado <span className="mono">{creado.numero_contenedor}</span> — estado{" "}
-          {creado.estado}
-        </p>
+        <Alert tone="success" titulo="Contenedor creado">
+          <span className="mono">{creado.numero_contenedor}</span> — estado{" "}
+          <Badge tone="info">{creado.estado}</Badge>
+        </Alert>
       )}
-      <form className={styles.form} onSubmit={handleSubmit}>
-        <label htmlFor="numero">Número de contenedor</label>
-        <input
-          id="numero"
-          value={numero}
-          onChange={(e) => setNumero(e.target.value)}
-          required
-          maxLength={11}
-        />
 
-        <label htmlFor="tipo">Tipo</label>
-        <select id="tipo" value={tipo} onChange={(e) => setTipo(e.target.value as TipoContenedor)}>
-          <option value="lleno">Lleno</option>
-          <option value="vacio">Vacío</option>
-        </select>
+      <Card className={styles.formulario}>
+        <form onSubmit={handleSubmit} className={styles.campos}>
+          <Field
+            label="Número de contenedor"
+            id="numero"
+            value={numero}
+            onChange={(e) => setNumero(e.target.value)}
+            hint="Once caracteres, cuatro letras y siete dígitos. Por ejemplo CSQU3054383."
+            required
+            maxLength={11}
+            // El número siempre va en mayúsculas y sin corrección del teclado móvil.
+            autoCapitalize="characters"
+            autoCorrect="off"
+            spellCheck={false}
+            className="mono"
+          />
 
-        <label htmlFor="tamano">Tamaño</label>
-        <select
-          id="tamano"
-          value={tamano}
-          onChange={(e) => setTamano(e.target.value as TamanoContenedor)}
-        >
-          <option value="20">20&apos;</option>
-          <option value="40">40&apos;</option>
-          <option value="45">45&apos;</option>
-        </select>
+          <div className={styles.fila}>
+            <div className={styles.selector}>
+              <label className={styles.etiqueta} htmlFor="tipo">
+                Tipo
+              </label>
+              <select
+                id="tipo"
+                className={styles.select}
+                value={tipo}
+                onChange={(e) => setTipo(e.target.value as TipoContenedor)}
+              >
+                <option value="lleno">Lleno</option>
+                <option value="vacio">Vacío</option>
+              </select>
+            </div>
 
-        <label htmlFor="patio_id">Patio</label>
-        <PatioSelect id="patio_id" value={patioId} onChange={setPatioId} />
+            <div className={styles.selector}>
+              <label className={styles.etiqueta} htmlFor="tamano">
+                Tamaño
+              </label>
+              <select
+                id="tamano"
+                className={styles.select}
+                value={tamano}
+                onChange={(e) => setTamano(e.target.value as TamanoContenedor)}
+              >
+                <option value="20">20&apos;</option>
+                <option value="40">40&apos;</option>
+                <option value="45">45&apos;</option>
+              </select>
+            </div>
+          </div>
 
-        <label htmlFor="peso_kg">Peso (kg)</label>
-        <input
-          id="peso_kg"
-          type="number"
-          value={pesoKg}
-          onChange={(e) => setPesoKg(e.target.value)}
-          required
-        />
+          <div className={styles.selector}>
+            <label className={styles.etiqueta} htmlFor="patio_id">
+              Patio
+            </label>
+            <PatioSelect id="patio_id" value={patioId} onChange={setPatioId} />
+          </div>
 
-        <button type="submit" disabled={submitting}>
-          {submitting ? "Creando..." : "Crear contenedor"}
-        </button>
-      </form>
+          <Field
+            label="Peso (kg)"
+            id="peso_kg"
+            type="number"
+            inputMode="numeric"
+            value={pesoKg}
+            onChange={(e) => setPesoKg(e.target.value)}
+            required
+          />
+
+          <Button type="submit" loading={submitting} className={styles.enviar}>
+            Crear contenedor
+          </Button>
+        </form>
+      </Card>
     </main>
   );
 }

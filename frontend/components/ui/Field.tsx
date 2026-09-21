@@ -9,6 +9,12 @@ interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
   error?: string;
   hint?: string;
   required?: boolean;
+  /**
+   * Oculta la etiqueta a la vista sin quitarla del árbol de accesibilidad. Solo para
+   * cuando algo cercano ya la muestra, como el encabezado de una columna con un campo por
+   * fila. Nunca para ahorrar espacio: un campo sin etiqueta visible no se entiende.
+   */
+  labelHidden?: boolean;
 }
 
 export function Field({
@@ -17,6 +23,7 @@ export function Field({
   error,
   hint,
   required,
+  labelHidden = false,
   className,
   "aria-describedby": describedBy,
   "aria-invalid": ariaInvalid,
@@ -29,16 +36,21 @@ export function Field({
 
   return (
     <div className={styles.campo}>
-      <label className={styles.etiqueta} htmlFor={id}>
-        {label}
+      <div className={labelHidden ? "sr-only" : styles.filaEtiqueta}>
+        <label className={styles.etiqueta} htmlFor={id}>
+          {label}
+        </label>
+        {/*
+         * El asterisco vive fuera del <label> y es decorativo. Meterlo dentro ensucia el
+         * nombre accesible del campo ("Correo *") sin aportar nada: el atributo required
+         * del input ya le dice a la tecnología asistiva que es obligatorio.
+         */}
         {required && (
-          <>
-            {" "}
-            <span aria-hidden="true">*</span>
-            <span className="sr-only">(obligatorio)</span>
-          </>
+          <span className={styles.obligatorio} aria-hidden="true">
+            *
+          </span>
         )}
-      </label>
+      </div>
       <input
         {...props}
         id={id}
