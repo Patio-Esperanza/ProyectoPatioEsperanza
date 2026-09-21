@@ -1,0 +1,35 @@
+.contenedor {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--color-on-surface);
+  font-size: var(--text-sm);
+}
+
+.tabla th,
+.tabla td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tabla th {
+  background: var(--color-surface-sunken);
+  font-weight: 600;
+}
+
+.start {
+  text-align: start;
+}
+
+.end {
+  text-align: end;
+}
+
+.vacio {
+  text-align: center;
+  color: var(--color-on-surface-muted);
+}
