@@ -6,6 +6,22 @@ import { login, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import styles from "./page.module.css";
 
+/**
+ * Separa el fallo de red del fallo de credenciales. `fetch` lanza un `TypeError` cuando la
+ * petición nunca sale (servidor caído, CORS, sin conexión); antes eso se mostraba con el
+ * mismo texto genérico que una contraseña incorrecta, lo que hacía imposible distinguir
+ * los dos casos al diagnosticar.
+ */
+function mensajeDeError(err: unknown): string {
+  if (err instanceof ApiError) {
+    return err.message;
+  }
+  if (err instanceof TypeError) {
+    return "No se pudo contactar al servidor. Revisa tu conexión e inténtalo de nuevo.";
+  }
+  return "No se pudo iniciar sesión";
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const { setToken } = useAuth();
@@ -23,7 +39,7 @@ export default function LoginPage() {
       setToken(access_token);
       router.push("/patios");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "No se pudo iniciar sesión");
+      setError(mensajeDeError(err));
     } finally {
       setSubmitting(false);
     }

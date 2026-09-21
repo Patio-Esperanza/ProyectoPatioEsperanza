@@ -32,7 +32,9 @@ describe("SolicitarPage", () => {
 
     render(<SolicitarPage />);
 
-    expect(screen.getByRole("alert")).toHaveTextContent("No autorizado");
+    expect(
+      screen.getByRole("heading", { name: "No tienes permiso para ver esta página" })
+    ).toBeInTheDocument();
   });
 
   it("submits a solicitud with the form values", async () => {

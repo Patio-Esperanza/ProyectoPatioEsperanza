@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
+import { ROLES_POR_RUTA } from "@/lib/rutas";
 import { PatioSelect } from "@/components/PatioSelect";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -111,7 +112,7 @@ function ContenedoresContent() {
 
 export default function ContenedoresPage() {
   return (
-    <AuthGuard>
+    <AuthGuard roles={ROLES_POR_RUTA["/contenedores"]}>
       <ContenedoresContent />
     </AuthGuard>
   );

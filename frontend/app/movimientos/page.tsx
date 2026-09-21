@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
+import { ROLES_POR_RUTA } from "@/lib/rutas";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError, crearMovimiento, type Movimiento, type TipoMovimiento } from "@/lib/api";
 import styles from "./page.module.css";
@@ -79,7 +80,7 @@ function MovimientosContent() {
 
 export default function MovimientosPage() {
   return (
-    <AuthGuard>
+    <AuthGuard roles={ROLES_POR_RUTA["/movimientos"]}>
       <MovimientosContent />
     </AuthGuard>
   );

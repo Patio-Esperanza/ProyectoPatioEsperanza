@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
+import { ROLES_POR_RUTA } from "@/lib/rutas";
 import { useAuth } from "@/lib/auth-context";
 import {
   ApiError,
@@ -14,7 +15,7 @@ import {
 import styles from "./page.module.css";
 
 function MisContenedoresContent() {
-  const { token, user } = useAuth();
+  const { token } = useAuth();
   const [contenedores, setContenedores] = useState<Contenedor[]>([]);
   const [patios, setPatios] = useState<Patio[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,15 +63,6 @@ function MisContenedoresContent() {
     }
   }
 
-  if (user?.rol !== "cliente") {
-    return (
-      <main className={styles.main}>
-        <p role="alert" className={styles.error}>
-          No autorizado para ver esta página
-        </p>
-      </main>
-    );
-  }
 
   return (
     <main className={styles.main}>
@@ -122,7 +114,7 @@ function MisContenedoresContent() {
 
 export default function MisContenedoresPage() {
   return (
-    <AuthGuard>
+    <AuthGuard roles={ROLES_POR_RUTA["/mis-contenedores"]}>
       <MisContenedoresContent />
     </AuthGuard>
   );

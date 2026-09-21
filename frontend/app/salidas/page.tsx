@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
+import { ROLES_POR_RUTA } from "@/lib/rutas";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError, listarContenedores, type Contenedor } from "@/lib/api";
 import styles from "./page.module.css";
 
 function SalidasContent() {
-  const { token, user } = useAuth();
+  const { token } = useAuth();
   const [contenedores, setContenedores] = useState<Contenedor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,15 +34,6 @@ function SalidasContent() {
     };
   }, [token]);
 
-  if (user?.rol !== "operador" && user?.rol !== "supervisor" && user?.rol !== "admin") {
-    return (
-      <main className={styles.main}>
-        <p role="alert" className={styles.error}>
-          No autorizado para ver esta página
-        </p>
-      </main>
-    );
-  }
 
   return (
     <main className={styles.main}>
@@ -73,7 +65,7 @@ function SalidasContent() {
 
 export default function SalidasPage() {
   return (
-    <AuthGuard>
+    <AuthGuard roles={ROLES_POR_RUTA["/salidas"]}>
       <SalidasContent />
     </AuthGuard>
   );

@@ -59,4 +59,41 @@ describe("LoginPage", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Credenciales inválidas");
   });
+
+  it("distinguishes a network failure from bad credentials", async () => {
+    const user = userEvent.setup();
+    vi.mocked(login).mockRejectedValue(new TypeError("Failed to fetch"));
+
+    render(
+      <AuthProvider>
+        <LoginPage />
+      </AuthProvider>
+    );
+
+    await user.type(screen.getByLabelText("Correo"), "admin@patio.mx");
+    await user.type(screen.getByLabelText("Contraseña"), "clave123");
+    await user.click(screen.getByRole("button", { name: "Entrar" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "No se pudo contactar al servidor"
+    );
+  });
+
+  it("re-enables the submit button after a failure", async () => {
+    const user = userEvent.setup();
+    vi.mocked(login).mockRejectedValue(new ApiError(401, "Credenciales inválidas"));
+
+    render(
+      <AuthProvider>
+        <LoginPage />
+      </AuthProvider>
+    );
+
+    await user.type(screen.getByLabelText("Correo"), "admin@patio.mx");
+    await user.type(screen.getByLabelText("Contraseña"), "mala");
+    await user.click(screen.getByRole("button", { name: "Entrar" }));
+
+    await screen.findByRole("alert");
+    expect(screen.getByRole("button", { name: "Entrar" })).toBeEnabled();
+  });
 });

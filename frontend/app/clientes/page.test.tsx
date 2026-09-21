@@ -33,7 +33,9 @@ describe("ClientesPage", () => {
 
     render(<ClientesPage />);
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("No autorizado");
+    expect(
+      await screen.findByRole("heading", { name: "No tienes permiso para ver esta página" })
+    ).toBeInTheDocument();
     expect(listClientes).not.toHaveBeenCalled();
   });
 

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
+import { ROLES_POR_RUTA } from "@/lib/rutas";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError, createCliente, listClientes, type Cliente, type TipoCliente } from "@/lib/api";
 import styles from "./page.module.css";
@@ -14,7 +15,7 @@ const TIPOS: TipoCliente[] = [
 ];
 
 function ClientesContent() {
-  const { token, user } = useAuth();
+  const { token } = useAuth();
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +25,7 @@ function ClientesContent() {
   const [creating, setCreating] = useState(false);
 
   const cargarClientes = useCallback(async () => {
-    if (!token || user?.rol !== "admin") return;
+    if (!token) return;
     setLoading(true);
     try {
       const data = await listClientes(token);
@@ -35,7 +36,7 @@ function ClientesContent() {
     } finally {
       setLoading(false);
     }
-  }, [token, user]);
+  }, [token]);
 
   useEffect(() => {
     cargarClientes();
@@ -58,15 +59,6 @@ function ClientesContent() {
     }
   }
 
-  if (user?.rol !== "admin") {
-    return (
-      <main className={styles.main}>
-        <p role="alert" className={styles.error}>
-          No autorizado para ver esta página
-        </p>
-      </main>
-    );
-  }
 
   return (
     <main className={styles.main}>
@@ -117,7 +109,7 @@ function ClientesContent() {
 
 export default function ClientesPage() {
   return (
-    <AuthGuard>
+    <AuthGuard roles={ROLES_POR_RUTA["/clientes"]}>
       <ClientesContent />
     </AuthGuard>
   );

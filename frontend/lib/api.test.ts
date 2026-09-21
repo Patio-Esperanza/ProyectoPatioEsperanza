@@ -77,7 +77,7 @@ describe("login", () => {
 
 describe("listPatios", () => {
   it("sends the bearer token and returns the list", async () => {
-    const patios: Patio[] = [{ id: "1", nombre: "Patio Norte", codigo: "PN", activo: true }];
+    const patios: Patio[] = [{ id: "1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 24 }];
     fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => patios });
 
     const result = await listPatios("token-123");
@@ -91,7 +91,7 @@ describe("listPatios", () => {
 
 describe("createPatio", () => {
   it("posts the payload as JSON with the bearer token", async () => {
-    const creado: Patio = { id: "2", nombre: "Patio Sur", codigo: "PS", activo: true };
+    const creado: Patio = { id: "2", nombre: "Patio Sur", codigo: "PS", activo: true, anticipacion_minima_horas: 24 };
     fetchMock.mockResolvedValue({ ok: true, status: 201, json: async () => creado });
 
     const result = await createPatio("token-123", { nombre: "Patio Sur", codigo: "PS" });
@@ -197,7 +197,7 @@ const USUARIO: Usuario = {
   email: "juan@patio.mx",
   tipo: "operador",
   activo: true,
-  patios: [{ id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true }],
+  patios: [{ id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 24 }],
 };
 
 describe("listUsuarios", () => {

@@ -2,12 +2,13 @@
 
 import { useState, type FormEvent } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
+import { ROLES_POR_RUTA } from "@/lib/rutas";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError, verificarPin, type Contenedor } from "@/lib/api";
 import styles from "./page.module.css";
 
 function PorteriaContent() {
-  const { token, user } = useAuth();
+  const { token } = useAuth();
   const [numero, setNumero] = useState("");
   const [pin, setPin] = useState("");
   const [verificado, setVerificado] = useState<Contenedor | null>(null);
@@ -32,15 +33,6 @@ function PorteriaContent() {
     }
   }
 
-  if (user?.rol !== "operador" && user?.rol !== "supervisor" && user?.rol !== "admin") {
-    return (
-      <main className={styles.main}>
-        <p role="alert" className={styles.error}>
-          No autorizado para ver esta página
-        </p>
-      </main>
-    );
-  }
 
   return (
     <main className={styles.main}>
@@ -86,7 +78,7 @@ function PorteriaContent() {
 
 export default function PorteriaPage() {
   return (
-    <AuthGuard>
+    <AuthGuard roles={ROLES_POR_RUTA["/porteria"]}>
       <PorteriaContent />
     </AuthGuard>
   );

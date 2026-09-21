@@ -32,7 +32,9 @@ describe("PorteriaPage", () => {
 
     render(<PorteriaPage />);
 
-    expect(screen.getByRole("alert")).toHaveTextContent("No autorizado");
+    expect(
+      screen.getByRole("heading", { name: "No tienes permiso para ver esta página" })
+    ).toBeInTheDocument();
   });
 
   it("submits numero_contenedor and pin, shows success", async () => {

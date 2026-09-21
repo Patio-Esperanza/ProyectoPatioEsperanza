@@ -74,3 +74,72 @@ describe("AuthGuard", () => {
     expect(replaceMock).not.toHaveBeenCalled();
   });
 });
+
+describe("AuthGuard with a roles list", () => {
+  function mockSession(rol: string) {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { id: "1", rol, patios: [] },
+      token: "token",
+      ready: true,
+      setToken: vi.fn(),
+      logout: vi.fn(),
+    });
+  }
+
+  it("renders children when the role is allowed", () => {
+    mockSession("admin");
+
+    render(
+      <AuthGuard roles={["operador", "supervisor", "admin"]}>
+        <p>contenido protegido</p>
+      </AuthGuard>
+    );
+
+    expect(screen.getByText("contenido protegido")).toBeInTheDocument();
+  });
+
+  it("shows the access denied screen when the role is not allowed", () => {
+    mockSession("cliente");
+
+    render(
+      <AuthGuard roles={["operador", "supervisor", "admin"]}>
+        <p>contenido protegido</p>
+      </AuthGuard>
+    );
+
+    expect(screen.queryByText("contenido protegido")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "No tienes permiso para ver esta página" })
+    ).toBeInTheDocument();
+  });
+
+  it("does not redirect when the role is not allowed", () => {
+    mockSession("cliente");
+
+    render(
+      <AuthGuard roles={["admin"]}>
+        <p>contenido protegido</p>
+      </AuthGuard>
+    );
+
+    expect(replaceMock).not.toHaveBeenCalled();
+  });
+
+  it("still redirects to /login when there is no session at all", () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: null,
+      token: null,
+      ready: true,
+      setToken: vi.fn(),
+      logout: vi.fn(),
+    });
+
+    render(
+      <AuthGuard roles={["admin"]}>
+        <p>contenido protegido</p>
+      </AuthGuard>
+    );
+
+    expect(replaceMock).toHaveBeenCalledWith("/login");
+  });
+});

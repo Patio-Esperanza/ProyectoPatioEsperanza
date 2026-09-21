@@ -2,11 +2,21 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import styles from "./NavBar.module.css";
 
 export function NavBar() {
   const { user, logout } = useAuth();
+  const router = useRouter();
+
+  // `logout` solo limpia almacenamiento y estado. La navegación se hace aquí, explícita:
+  // un contenedor de estado que navega por su cuenta esconde el efecto y es difícil de
+  // probar.
+  function handleLogout() {
+    logout();
+    router.replace("/login");
+  }
 
   if (!user) {
     return null;
@@ -35,7 +45,7 @@ export function NavBar() {
       </div>
       <div className={styles.session}>
         <span className={styles.rol}>{user.rol}</span>
-        <button onClick={logout}>Salir</button>
+        <button onClick={handleLogout}>Salir</button>
       </div>
     </nav>
   );

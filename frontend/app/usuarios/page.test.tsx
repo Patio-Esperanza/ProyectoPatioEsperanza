@@ -23,8 +23,8 @@ function mockAuth(rol: string, patios: string[] = []) {
 }
 
 const PATIOS = [
-  { id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true },
-  { id: "p2", nombre: "Patio Sur", codigo: "PS", activo: true },
+  { id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 24 },
+  { id: "p2", nombre: "Patio Sur", codigo: "PS", activo: true, anticipacion_minima_horas: 24 },
 ];
 
 beforeEach(() => {
@@ -40,7 +40,9 @@ describe("UsuariosPage", () => {
 
     render(<UsuariosPage />);
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("No autorizado");
+    expect(
+      await screen.findByRole("heading", { name: "No tienes permiso para ver esta página" })
+    ).toBeInTheDocument();
     expect(listUsuarios).not.toHaveBeenCalled();
   });
 
@@ -53,7 +55,7 @@ describe("UsuariosPage", () => {
         email: "juan@patio.mx",
         tipo: "operador",
         activo: true,
-        patios: [{ id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true }],
+        patios: [{ id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 24 }],
       },
     ]);
 
@@ -73,7 +75,7 @@ describe("UsuariosPage", () => {
           email: "ana@patio.mx",
           tipo: "supervisor",
           activo: true,
-          patios: [{ id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true }],
+          patios: [{ id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 24 }],
         },
       ]);
     vi.mocked(createUsuario).mockResolvedValue({
@@ -82,7 +84,7 @@ describe("UsuariosPage", () => {
       email: "ana@patio.mx",
       tipo: "supervisor",
       activo: true,
-      patios: [{ id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true }],
+      patios: [{ id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 24 }],
     });
 
     const user = userEvent.setup();

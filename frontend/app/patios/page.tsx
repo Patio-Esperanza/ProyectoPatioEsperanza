@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
+import { ROLES_POR_RUTA } from "@/lib/rutas";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError, actualizarPatio, createPatio, listPatios, type Patio } from "@/lib/api";
 import styles from "./page.module.css";
@@ -112,7 +113,7 @@ function PatiosContent() {
 
 export default function PatiosPage() {
   return (
-    <AuthGuard>
+    <AuthGuard roles={ROLES_POR_RUTA["/patios"]}>
       <PatiosContent />
     </AuthGuard>
   );

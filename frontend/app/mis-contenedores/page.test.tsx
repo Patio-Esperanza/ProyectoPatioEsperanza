@@ -39,7 +39,9 @@ describe("MisContenedoresPage", () => {
 
     render(<MisContenedoresPage />);
 
-    expect(screen.getByRole("alert")).toHaveTextContent("No autorizado");
+    expect(
+      screen.getByRole("heading", { name: "No tienes permiso para ver esta página" })
+    ).toBeInTheDocument();
   });
 
   it("lists the client's contenedores and shows Solicitar salida only for ubicado", async () => {

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
+import { ROLES_POR_RUTA } from "@/lib/rutas";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError, createUsuario, listUsuarios, type RolUsuario, type Usuario } from "@/lib/api";
 import { usePatiosDisponibles } from "@/lib/use-patios-disponibles";
@@ -10,7 +11,7 @@ import styles from "./page.module.css";
 const ROLES: RolUsuario[] = ["operador", "supervisor", "guardia", "despachador", "admin"];
 
 function UsuariosContent() {
-  const { token, user } = useAuth();
+  const { token } = useAuth();
   const { patios: patiosDisponibles } = usePatiosDisponibles();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,7 +25,7 @@ function UsuariosContent() {
   const [creating, setCreating] = useState(false);
 
   const cargarUsuarios = useCallback(async () => {
-    if (!token || user?.rol !== "admin") return;
+    if (!token) return;
     setLoading(true);
     try {
       const data = await listUsuarios(token);
@@ -35,7 +36,7 @@ function UsuariosContent() {
     } finally {
       setLoading(false);
     }
-  }, [token, user]);
+  }, [token]);
 
   useEffect(() => {
     cargarUsuarios();
@@ -65,15 +66,6 @@ function UsuariosContent() {
     }
   }
 
-  if (user?.rol !== "admin") {
-    return (
-      <main className={styles.main}>
-        <p role="alert" className={styles.error}>
-          No autorizado para ver esta página
-        </p>
-      </main>
-    );
-  }
 
   return (
     <main className={styles.main}>
@@ -153,7 +145,7 @@ function UsuariosContent() {
 
 export default function UsuariosPage() {
   return (
-    <AuthGuard>
+    <AuthGuard roles={ROLES_POR_RUTA["/usuarios"]}>
       <UsuariosContent />
     </AuthGuard>
   );

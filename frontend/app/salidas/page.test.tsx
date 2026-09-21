@@ -32,7 +32,9 @@ describe("SalidasPage", () => {
 
     render(<SalidasPage />);
 
-    expect(screen.getByRole("alert")).toHaveTextContent("No autorizado");
+    expect(
+      screen.getByRole("heading", { name: "No tienes permiso para ver esta página" })
+    ).toBeInTheDocument();
   });
 
   it("lists pending salida requests ordered by fecha_deseada_salida", async () => {

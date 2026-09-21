@@ -30,7 +30,7 @@ describe("PatioSelect", () => {
   it("auto-selects and disables the select when there is exactly one patio", () => {
     const onChange = vi.fn();
     vi.mocked(usePatiosDisponibles).mockReturnValue({
-      patios: [{ id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true }],
+      patios: [{ id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 24 }],
       loading: false,
     });
 
@@ -44,8 +44,8 @@ describe("PatioSelect", () => {
     const onChange = vi.fn();
     vi.mocked(usePatiosDisponibles).mockReturnValue({
       patios: [
-        { id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true },
-        { id: "p2", nombre: "Patio Sur", codigo: "PS", activo: true },
+        { id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 24 },
+        { id: "p2", nombre: "Patio Sur", codigo: "PS", activo: true, anticipacion_minima_horas: 24 },
       ],
       loading: false,
     });

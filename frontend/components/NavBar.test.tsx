@@ -4,9 +4,16 @@ import userEvent from "@testing-library/user-event";
 import { NavBar } from "./NavBar";
 import { useAuth } from "@/lib/auth-context";
 
+const { replaceMock } = vi.hoisted(() => ({ replaceMock: vi.fn() }));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: replaceMock }),
+}));
+
 vi.mock("@/lib/auth-context", () => ({ useAuth: vi.fn() }));
 
 beforeEach(() => {
+  replaceMock.mockClear();
   vi.mocked(useAuth).mockReset();
 });
 
@@ -40,6 +47,22 @@ describe("NavBar", () => {
     expect(screen.getByText("operador")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Salir" }));
     expect(logoutMock).toHaveBeenCalled();
+  });
+
+  it("navigates to /login after logging out", async () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { id: "1", rol: "operador", patios: [] },
+      token: "token",
+      ready: true,
+      setToken: vi.fn(),
+      logout: vi.fn(),
+    });
+
+    const user = userEvent.setup();
+    render(<NavBar />);
+
+    await user.click(screen.getByRole("button", { name: "Salir" }));
+    expect(replaceMock).toHaveBeenCalledWith("/login");
   });
 
   it("shows the Usuarios link only for admin", () => {

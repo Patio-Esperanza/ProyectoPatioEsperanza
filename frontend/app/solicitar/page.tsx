@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
+import { ROLES_POR_RUTA } from "@/lib/rutas";
 import { useAuth } from "@/lib/auth-context";
 import {
   ApiError,
@@ -13,7 +14,7 @@ import {
 import styles from "./page.module.css";
 
 function SolicitarContent() {
-  const { token, user } = useAuth();
+  const { token } = useAuth();
   const [numero, setNumero] = useState("");
   const [tipo, setTipo] = useState<TipoContenedor>("lleno");
   const [tamano, setTamano] = useState<TamanoContenedor>("40");
@@ -48,15 +49,6 @@ function SolicitarContent() {
     }
   }
 
-  if (user?.rol !== "cliente") {
-    return (
-      <main className={styles.main}>
-        <p role="alert" className={styles.error}>
-          No autorizado para ver esta página
-        </p>
-      </main>
-    );
-  }
 
   return (
     <main className={styles.main}>
@@ -126,7 +118,7 @@ function SolicitarContent() {
 
 export default function SolicitarPage() {
   return (
-    <AuthGuard>
+    <AuthGuard roles={ROLES_POR_RUTA["/solicitar"]}>
       <SolicitarContent />
     </AuthGuard>
   );
