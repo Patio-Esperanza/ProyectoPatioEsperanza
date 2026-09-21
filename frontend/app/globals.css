@@ -1,42 +1,231 @@
+/*
+ * Sistema de diseño de Patio Esperanza.
+ *
+ * Dos capas. Abajo la paleta de marca, que son los colores literales y no deben usarse
+ * directamente en un componente. Encima los tokens semánticos, que sí. Esa separación es
+ * lo que hace barato activar el modo oscuro: se redefinen los semánticos y nada más.
+ */
+
 :root {
-  --azul: #000056;
-  --azul-soft: #e4e4f0;
-  --cafe: #af8235;
-  --cafe-soft: #f3e7d2;
-  --amarillo: #f0d579;
-  --amarillo-ink: #5c4a08;
-  --amarillo-soft: #fbf3dc;
-  --gris: #504d4c;
-  --bg: #f5f5f7;
-  --surface: #ffffff;
-  --border: #d8d7de;
-  --text: #1b1a1f;
-  --text-muted: #5b5960;
-  --danger: #b3261e;
-  --danger-soft: #fbe4e2;
+  /* --- Paleta de marca (valores literales, no usar directo en componentes) --- */
+  --marca-azul: #000056;
+  --marca-azul-claro: #1a1a75;
+  --marca-azul-suave: #e4e4f0;
+  --marca-cafe: #af8235;
+  --marca-cafe-suave: #f3e7d2;
+  --marca-amarillo: #f0d579;
+  --marca-amarillo-tinta: #5c4a08;
+  --marca-amarillo-suave: #fbf3dc;
+  --marca-gris: #504d4c;
+
+  /* --- Tokens semánticos (estos son los que usan los componentes) --- */
+  --color-primary: var(--marca-azul);
+  --color-primary-hover: var(--marca-azul-claro);
+  --color-on-primary: #ffffff;
+  --color-accent: var(--marca-cafe);
+  --color-on-accent: #ffffff;
+
+  --color-bg: #f5f5f7;
+  --color-surface: #ffffff;
+  --color-surface-sunken: #ececef;
+  --color-on-surface: #1b1a1f;
+  --color-on-surface-muted: #5b5960;
+  --color-border: #d8d7de;
+  --color-border-strong: #b9b7c0;
+
+  --color-danger: #b3261e;
+  --color-danger-surface: #fbe4e2;
+  --color-warning: var(--marca-amarillo-tinta);
+  --color-warning-surface: var(--marca-amarillo-suave);
+  --color-success: #1d6f42;
+  --color-success-surface: #e2f2e8;
+  --color-info: var(--marca-azul);
+  --color-info-surface: var(--marca-azul-suave);
+
+  --color-ring: var(--marca-azul);
+
+  /* --- Espaciado, múltiplos de 4 --- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  /* --- Escala tipográfica --- */
+  --text-xs: 0.75rem; /* 12 */
+  --text-sm: 0.875rem; /* 14 */
+  --text-base: 1rem; /* 16 */
+  --text-lg: 1.125rem; /* 18 */
+  --text-xl: 1.5rem; /* 24 */
+  --text-2xl: 2rem; /* 32 */
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-loose: 1.65;
+
+  /* --- Radios --- */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* --- Elevación --- */
+  --shadow-1: 0 1px 2px rgba(27, 26, 31, 0.06);
+  --shadow-2: 0 2px 8px rgba(27, 26, 31, 0.08);
+  --shadow-3: 0 8px 24px rgba(27, 26, 31, 0.12);
+
+  /* --- Movimiento --- */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+
+  /* --- Capas --- */
+  --z-sidebar: 40;
+  --z-overlay: 100;
+  --z-toast: 1000;
+
+  /* --- Medidas --- */
+  --ancho-contenido: 1280px;
+  --ancho-lectura: 640px;
+  --ancho-sidebar: 248px;
+  --alto-toque: 44px;
+
+  /*
+   * TEMPORAL — alias a los nombres viejos.
+   *
+   * Los 11 `page.module.css` que todavía no se migran a los componentes compartidos
+   * siguen usando estos nombres. Se borran en la Fase 2, cuando ya nadie los referencie.
+   * No usar ninguno en código nuevo.
+   */
+  --azul: var(--color-primary);
+  --azul-soft: var(--marca-azul-suave);
+  --cafe: var(--marca-cafe);
+  --cafe-soft: var(--marca-cafe-suave);
+  --amarillo: var(--marca-amarillo);
+  --amarillo-ink: var(--marca-amarillo-tinta);
+  --amarillo-soft: var(--marca-amarillo-suave);
+  --gris: var(--marca-gris);
+  --bg: var(--color-bg);
+  --surface: var(--color-surface);
+  --border: var(--color-border);
+  --text: var(--color-on-surface);
+  --text-muted: var(--color-on-surface-muted);
+  --danger: var(--color-danger);
+  --danger-soft: var(--color-danger-surface);
 }
 
-* {
+/*
+ * Paleta oscura. Definida pero NO activada: se aplica solo cuando alguien pone
+ * data-theme="dark" en <html>. A propósito no se engancha a prefers-color-scheme, porque
+ * el interruptor todavía no existe y el contraste de cada pantalla no se ha verificado en
+ * oscuro. Ver la spec 2026-09-20-auth-frontend-y-rediseno-ui-design.md.
+ */
+:root[data-theme="dark"] {
+  --color-primary: #8f8fd4;
+  --color-primary-hover: #a5a5e0;
+  --color-on-primary: #0b0b1f;
+  --color-accent: #d3a860;
+  --color-on-accent: #241a06;
+
+  --color-bg: #131318;
+  --color-surface: #1c1c23;
+  --color-surface-sunken: #101015;
+  --color-on-surface: #eceaf2;
+  --color-on-surface-muted: #a8a5b3;
+  --color-border: #34333d;
+  --color-border-strong: #4c4b57;
+
+  --color-danger: #f2b8b5;
+  --color-danger-surface: #3a1b19;
+  --color-warning: #f0d579;
+  --color-warning-surface: #3a3016;
+  --color-success: #9bd5b1;
+  --color-success-surface: #14301f;
+  --color-info: #b9b9e8;
+  --color-info-surface: #1f1f3d;
+
+  --color-ring: #a5a5e0;
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 2px 8px rgba(0, 0, 0, 0.45);
+  --shadow-3: 0 8px 24px rgba(0, 0, 0, 0.55);
+}
+
+*,
+*::before,
+*::after {
   box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--text);
+  background: var(--color-bg);
+  color: var(--color-on-surface);
   font-family: var(--font-plex-sans), system-ui, sans-serif;
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+}
+
+h1,
+h2,
+h3 {
+  line-height: var(--leading-tight);
+  margin: 0;
 }
 
 code,
 .mono {
   font-family: var(--font-plex-mono), ui-monospace, monospace;
+  /* Cifras de ancho fijo: evita que una tabla se mueva al cambiar los números. */
+  font-variant-numeric: tabular-nums;
 }
 
 a {
-  color: var(--azul);
+  color: var(--color-primary);
 }
 
 button {
   cursor: pointer;
   font-family: inherit;
+  font-size: inherit;
+}
+
+/*
+ * Un solo anillo de foco para todo lo interactivo. Antes no existía ninguno, que es el
+ * incumplimiento de accesibilidad más básico: quien navega con teclado no veía dónde
+ * estaba parado.
+ */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Solo visible para lectores de pantalla. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

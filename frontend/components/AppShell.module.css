@@ -1,0 +1,37 @@
+.shell {
+  min-height: 100dvh;
+}
+
+.contenido {
+  /*
+   * En móvil la sidebar flota encima, así que el contenido no se desplaza. Solo deja
+   * hueco arriba para que el disparador del menú no tape el encabezado de la página.
+   */
+  padding-top: calc(var(--alto-toque) + var(--space-4));
+}
+
+.saltar {
+  position: absolute;
+  inset-inline-start: var(--space-2);
+  top: -100px;
+  z-index: var(--z-toast);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-surface);
+  color: var(--color-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  transition: top var(--duration-fast) var(--ease-out);
+}
+
+.saltar:focus {
+  top: var(--space-2);
+}
+
+@media (min-width: 1024px) {
+  .contenido {
+    /* La sidebar es permanente: el contenido se corre para no quedar debajo. */
+    margin-inline-start: var(--ancho-sidebar);
+    padding-top: 0;
+  }
+}

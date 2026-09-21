@@ -1,0 +1,163 @@
+.sidebar {
+  position: fixed;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: var(--ancho-sidebar);
+  z-index: var(--z-sidebar);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border-inline-end: 1px solid var(--color-border);
+  overflow-y: auto;
+  /* En móvil entra deslizando desde el borde. */
+  transform: translateX(-100%);
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+.abierta {
+  transform: translateX(0);
+}
+
+.velo {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-sidebar) - 1);
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.disparador {
+  position: fixed;
+  top: var(--space-3);
+  inset-inline-start: var(--space-3);
+  z-index: var(--z-overlay);
+  width: var(--alto-toque);
+  height: var(--alto-toque);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-lg);
+  background: var(--color-surface);
+  color: var(--color-on-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-2);
+}
+
+.marca {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-block: var(--space-2);
+  /* El logo necesita fondo claro; nunca va directo sobre el azul de marca. */
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+}
+
+.secciones {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  flex: 1;
+}
+
+.seccion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.tituloSeccion {
+  margin: 0 0 var(--space-1);
+  padding-inline: var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-on-surface-muted);
+}
+
+.lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.enlace {
+  display: flex;
+  align-items: center;
+  min-height: var(--alto-toque);
+  padding-inline: var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  color: var(--color-on-surface);
+  text-decoration: none;
+  /* Solo color: no mover cajas en hover, eso sacude la lista. */
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.enlace:hover {
+  background: var(--color-surface-sunken);
+}
+
+.activo {
+  background: var(--color-info-surface);
+  color: var(--color-primary);
+  font-weight: 600;
+  /* La ruta activa no se marca solo con color: lleva también una barra lateral. */
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+.sesion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.rol {
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-on-surface-muted);
+}
+
+/*
+ * "Salir" es destructivo para la sesión: va separado del resto de la navegación y en
+ * tratamiento secundario, nunca como acción primaria.
+ */
+.salir {
+  min-height: 36px;
+  padding-inline: var(--space-3);
+  background: transparent;
+  color: var(--color-danger);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.salir:hover {
+  background: var(--color-danger-surface);
+  border-color: var(--color-danger);
+}
+
+@media (min-width: 1024px) {
+  /* En escritorio la sidebar es permanente: no hay disparador, velo ni deslizamiento. */
+  .sidebar {
+    transform: none;
+    transition: none;
+  }
+
+  .disparador,
+  .velo {
+    display: none;
+  }
+}

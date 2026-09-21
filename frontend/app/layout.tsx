@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-context";
-import { NavBar } from "@/components/NavBar";
+import { AppShell } from "@/components/AppShell";
 import "./globals.css";
 
 const plexSans = IBM_Plex_Sans({
@@ -27,8 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es" className={`${plexSans.variable} ${plexMono.variable}`}>
       <body>
         <AuthProvider>
-          <NavBar />
-          {children}
+          <AppShell>{children}</AppShell>
         </AuthProvider>
       </body>
     </html>
