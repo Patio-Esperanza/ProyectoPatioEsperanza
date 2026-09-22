@@ -765,3 +765,60 @@ async def test_solicitar_salida_contenedor_inexistente_404(client, db_session):
     )
 
     assert response.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_listar_contenedores_filtra_los_que_no_tienen_ubicacion(client, db_session):
+    """El panel de pendientes del mapa necesita solo los contenedores sin ubicar."""
+    from app.models.enums import EstadoContenedor, TamanoContenedor, TipoContenedor
+    from app.models.ubicacion import Carril, Tira, Tramo, Ubicacion
+
+    await _crear_usuario_autenticado(db_session)
+    token = _token(RolUsuario.ADMIN)
+    patio = await _crear_patio(db_session, "Patio Filtro", "PF")
+
+    carril = Carril(patio_id=patio.id, codigo="A9", orden=0)
+    db_session.add(carril)
+    await db_session.flush()
+    tramo = Tramo(carril_id=carril.id, codigo="T9", orden=0)
+    db_session.add(tramo)
+    await db_session.flush()
+    tira = Tira(tramo_id=tramo.id, codigo="R9", orden=0)
+    db_session.add(tira)
+    await db_session.flush()
+    ubicacion = Ubicacion(tira_id=tira.id, nivel=1, codigo="A9-T9-R9-N1", activo=True)
+    db_session.add(ubicacion)
+    await db_session.flush()
+
+    db_session.add_all(
+        [
+            Contenedor(
+                numero_contenedor="AAAU0000001",
+                tipo=TipoContenedor.LLENO,
+                tamano=TamanoContenedor.CUARENTA,
+                patio_id=patio.id,
+                ubicacion_id=None,
+                estado=EstadoContenedor.INGRESADO,
+                peso_kg=1000,
+            ),
+            Contenedor(
+                numero_contenedor="AAAU0000002",
+                tipo=TipoContenedor.LLENO,
+                tamano=TamanoContenedor.CUARENTA,
+                patio_id=patio.id,
+                ubicacion_id=ubicacion.id,
+                estado=EstadoContenedor.UBICADO,
+                peso_kg=1000,
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    response = await client.get(
+        f"/api/contenedores?patio_id={patio.id}&sin_ubicacion=true",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    numeros = [c["numero_contenedor"] for c in response.json()]
+    assert numeros == ["AAAU0000001"]

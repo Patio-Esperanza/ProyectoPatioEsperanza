@@ -34,6 +34,7 @@ async def listar_contenedores(
     estado: EstadoContenedor | None = Query(default=None),
     patio_id: uuid.UUID | None = Query(default=None),
     cliente_id: uuid.UUID | None = Query(default=None),
+    sin_ubicacion: bool | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
 ) -> list[Contenedor]:
@@ -49,6 +50,9 @@ async def listar_contenedores(
 
     if estado is not None:
         query = query.where(Contenedor.estado == estado)
+
+    if sin_ubicacion:
+        query = query.where(Contenedor.ubicacion_id.is_(None))
 
     if estado == EstadoContenedor.SOLICITUD_SALIDA:
         query = query.order_by(Contenedor.fecha_deseada_salida.asc())
