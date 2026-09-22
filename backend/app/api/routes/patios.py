@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,7 +9,9 @@ from app.core.auditoria import registrar_auditoria
 from app.db import get_db
 from app.models.enums import RolUsuario
 from app.models.ubicacion import Patio
+from app.schemas.mapa import MapaPatioOut
 from app.schemas.patio import PatioCreate, PatioOut, PatioUpdate
+from app.services.mapa_patio import obtener_mapa
 
 router = APIRouter()
 
@@ -85,3 +89,18 @@ async def actualizar_patio(
     await db.commit()
     await db.refresh(patio)
     return patio
+
+
+_ROLES_MAPA = (RolUsuario.OPERADOR, RolUsuario.SUPERVISOR, RolUsuario.ADMIN)
+
+
+@router.get("/{patio_id}/mapa", response_model=MapaPatioOut)
+async def mapa_patio(
+    patio_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(require_roles(*_ROLES_MAPA)),
+) -> MapaPatioOut:
+    existe = await db.execute(select(Patio.id).where(Patio.id == patio_id))
+    if existe.scalar_one_or_none() is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Patio no encontrado")
+    return await obtener_mapa(db, patio_id)
