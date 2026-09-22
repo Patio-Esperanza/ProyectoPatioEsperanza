@@ -36,5 +36,9 @@ async def sugerir(
         raise HTTPException(status.HTTP_409_CONFLICT, str(exc))
 
     return SugerenciaUbicacionResponse(
-        ubicacion_id=candidato.ubicacion_id, codigo=candidato.codigo, costo=candidato.costo
+        ubicacion_id=candidato.ubicacion_id,
+        codigo=candidato.codigo,
+        costo=candidato.costo,
+        tira_id=candidato.tira_id,
+        nivel=candidato.nivel,
     )

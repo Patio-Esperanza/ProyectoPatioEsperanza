@@ -32,3 +32,5 @@ class SugerenciaUbicacionResponse(BaseModel):
     ubicacion_id: uuid.UUID
     codigo: str
     costo: float
+    tira_id: uuid.UUID
+    nivel: int

@@ -100,3 +100,42 @@ async def test_no_sugiere_nivel_sin_base(db_session):
         db_session, patio_id=patio.id, contenedor=contenedor, punto_referencia_ubicacion_id=ubicacion_a1.id
     )
     assert resultado.ubicacion_id == ubicacion_a1.id
+
+
+@pytest.mark.anyio
+async def test_la_sugerencia_incluye_tira_y_nivel(db_session):
+    """El mapa resalta la tira sugerida, asi que el candidato debe decir cual es."""
+    patio, ubicacion_a, ubicacion_b = await _crear_estructura(
+        db_session, carril_a_orden=0, carril_a_tipo=None, carril_b_orden=1, carril_b_tipo=None
+    )
+
+    cliente = Cliente(
+        razon_social="Importadora X", rfc="IMX090909AA1", tipo=TipoCliente.IMPORTADOR_EXPORTADOR
+    )
+    db_session.add(cliente)
+    await db_session.flush()
+
+    contenedor = Contenedor(
+        numero_contenedor="CSQU3054383",
+        tipo=TipoContenedor.LLENO,
+        tamano=TamanoContenedor.CUARENTA,
+        cliente_id=cliente.id,
+        patio_id=patio.id,
+        estado=EstadoContenedor.INGRESADO,
+        peso_kg=18000,
+    )
+    db_session.add(contenedor)
+    await db_session.flush()
+
+    candidato = await sugerir_ubicacion(
+        db_session,
+        patio_id=patio.id,
+        contenedor=contenedor,
+        punto_referencia_ubicacion_id=ubicacion_a.id,
+    )
+
+    elegida = next(
+        u for u in (ubicacion_a, ubicacion_b) if u.id == candidato.ubicacion_id
+    )
+    assert candidato.tira_id == elegida.tira_id
+    assert candidato.nivel == elegida.nivel

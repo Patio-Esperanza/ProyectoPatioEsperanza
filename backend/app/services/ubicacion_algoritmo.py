@@ -29,6 +29,8 @@ class CandidatoUbicacion:
     ubicacion_id: uuid.UUID
     codigo: str
     costo: float
+    tira_id: uuid.UUID
+    nivel: int
 
 
 def distancia_manhattan(a: Coordenadas, b: Coordenadas) -> int:
@@ -141,7 +143,11 @@ async def sugerir_ubicacion(
             if abajo is None:
                 continue
         costo = await calcular_costo(db, ubicacion, contenedor, punto_referencia)
-        evaluados.append(CandidatoUbicacion(ubicacion.id, ubicacion.codigo, costo))
+        evaluados.append(
+            CandidatoUbicacion(
+                ubicacion.id, ubicacion.codigo, costo, ubicacion.tira_id, ubicacion.nivel
+            )
+        )
 
     if not evaluados:
         raise ValueError("No hay ubicaciones disponibles que cumplan las restricciones")
