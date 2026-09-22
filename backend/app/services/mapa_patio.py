@@ -7,7 +7,10 @@ from app.models.contenedor import Contenedor
 from app.models.ubicacion import Carril, Patio, Tira, Tramo, Ubicacion
 from app.schemas.mapa import (
     CarrilMapaOut,
+    ContenedorEnNivelOut,
+    DetalleTiraOut,
     MapaPatioOut,
+    NivelTiraOut,
     ResumenMapaOut,
     TiraMapaOut,
     TramoMapaOut,
@@ -108,4 +111,60 @@ async def obtener_mapa(db: AsyncSession, patio_id: uuid.UUID) -> MapaPatioOut:
         ubicacion_entrada_id=patio.ubicacion_entrada_id,
         resumen=ResumenMapaOut(ubicaciones_activas=ubicaciones_activas, ocupadas=ocupadas),
         carriles=carriles,
+    )
+
+
+async def obtener_detalle_tira(db: AsyncSession, tira_id: uuid.UUID) -> DetalleTiraOut | None:
+    """Los niveles de una tira con el contenedor de cada uno.
+
+    El codigo que devuelve es el compuesto carril-tramo-tira, porque ese es el que el
+    operador ve en el patio; el `codigo` de la tabla `tiras` solo distingue dentro del tramo.
+    """
+    encabezado = await db.execute(
+        select(Carril.codigo, Tramo.codigo, Tira.codigo)
+        .select_from(Tira)
+        .join(Tramo, Tira.tramo_id == Tramo.id)
+        .join(Carril, Tramo.carril_id == Carril.id)
+        .where(Tira.id == tira_id)
+    )
+    fila_encabezado = encabezado.one_or_none()
+    if fila_encabezado is None:
+        return None
+    carril_codigo, tramo_codigo, tira_codigo = fila_encabezado
+
+    filas = await db.execute(
+        select(Ubicacion, Contenedor)
+        .outerjoin(Contenedor, Contenedor.ubicacion_id == Ubicacion.id)
+        .where(Ubicacion.tira_id == tira_id)
+        .order_by(Ubicacion.nivel)
+    )
+
+    niveles: list[NivelTiraOut] = []
+    for ubicacion, contenedor in filas:
+        niveles.append(
+            NivelTiraOut(
+                nivel=ubicacion.nivel,
+                ubicacion_id=ubicacion.id,
+                codigo=ubicacion.codigo,
+                activo=ubicacion.activo,
+                capacidad_peso_kg=ubicacion.capacidad_peso_kg,
+                contenedor=(
+                    None
+                    if contenedor is None
+                    else ContenedorEnNivelOut(
+                        id=contenedor.id,
+                        numero_contenedor=contenedor.numero_contenedor,
+                        tipo=contenedor.tipo,
+                        tamano=contenedor.tamano,
+                        peso_kg=contenedor.peso_kg,
+                        estado=contenedor.estado,
+                    )
+                ),
+            )
+        )
+
+    return DetalleTiraOut(
+        tira_id=tira_id,
+        codigo=f"{carril_codigo}-{tramo_codigo}-{tira_codigo}",
+        niveles=niveles,
     )

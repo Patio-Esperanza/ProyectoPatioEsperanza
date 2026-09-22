@@ -170,3 +170,47 @@ async def test_mapa_oculta_la_ocupacion_de_un_patio_no_asignado(client, db_sessi
     tira_out = response.json()["carriles"][0]["tramos"][0]["tiras"][0]
     assert tira_out["niveles_totales"] == 3
     assert tira_out["niveles_ocupados"] == 0
+
+
+@pytest.mark.anyio
+async def test_detalle_tira_devuelve_niveles_con_y_sin_contenedor(client, db_session):
+    await _crear_usuario(db_session, RolUsuario.OPERADOR)
+    patio, tira, ubicaciones = await _crear_layout(db_session, "F")
+    db_session.add(
+        Contenedor(
+            numero_contenedor="MSCU1234567",
+            tipo=TipoContenedor.LLENO,
+            tamano=TamanoContenedor.VEINTE,
+            patio_id=patio.id,
+            ubicacion_id=ubicaciones[0].id,
+            estado=EstadoContenedor.UBICADO,
+            peso_kg=2400,
+        )
+    )
+    await db_session.commit()
+    token = _token(RolUsuario.OPERADOR, [str(patio.id)])
+
+    response = await client.get(
+        f"/api/tiras/{tira.id}", headers={"Authorization": f"Bearer {token}"}
+    )
+
+    assert response.status_code == 200
+    cuerpo = response.json()
+    assert cuerpo["codigo"] == "A1-T1-R1"
+    assert len(cuerpo["niveles"]) == 3
+    assert cuerpo["niveles"][0]["nivel"] == 1
+    assert cuerpo["niveles"][0]["contenedor"]["numero_contenedor"] == "MSCU1234567"
+    assert cuerpo["niveles"][1]["contenedor"] is None
+    assert cuerpo["niveles"][2]["activo"] is False
+
+
+@pytest.mark.anyio
+async def test_detalle_tira_404_si_no_existe(client, db_session):
+    await _crear_usuario(db_session, RolUsuario.OPERADOR)
+    token = _token(RolUsuario.OPERADOR)
+
+    response = await client.get(
+        f"/api/tiras/{uuid.uuid4()}", headers={"Authorization": f"Bearer {token}"}
+    )
+
+    assert response.status_code == 404

@@ -3,7 +3,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.routes import auth, clientes, contenedores, movimientos, patios, ubicaciones, usuarios
+from app.api.routes import (
+    auth,
+    clientes,
+    contenedores,
+    movimientos,
+    patios,
+    tiras,
+    ubicaciones,
+    usuarios,
+)
 from app.config import settings
 from app.db import get_db
 
@@ -34,5 +43,6 @@ app.include_router(patios.router, prefix="/api/patios", tags=["patios"])
 app.include_router(contenedores.router, prefix="/api/contenedores", tags=["contenedores"])
 app.include_router(movimientos.router, prefix="/api/movimientos", tags=["movimientos"])
 app.include_router(ubicaciones.router, prefix="/api/ubicaciones", tags=["ubicaciones"])
+app.include_router(tiras.router, prefix="/api/tiras", tags=["tiras"])
 app.include_router(usuarios.router, prefix="/api/usuarios", tags=["usuarios"])
 app.include_router(clientes.router, prefix="/api/clientes", tags=["clientes"])
