@@ -21,3 +21,4 @@ class PatioOut(BaseModel):
     codigo: str
     activo: bool
     anticipacion_minima_horas: int
+    ubicacion_entrada_id: uuid.UUID | None = None

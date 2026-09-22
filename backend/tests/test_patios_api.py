@@ -137,3 +137,18 @@ async def test_actualizar_patio_inexistente_404(client, db_session):
     )
 
     assert response.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_patio_expone_punto_de_entrada_nulo(client, db_session):
+    await _crear_usuario_autenticado(db_session, RolUsuario.ADMIN)
+    token = _token(RolUsuario.ADMIN)
+    await client.post(
+        "/api/patios",
+        json={"nombre": "Patio Entrada", "codigo": "PE"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    response = await client.get("/api/patios", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 200
+    patio = next(p for p in response.json() if p["codigo"] == "PE")
+    assert patio["ubicacion_entrada_id"] is None

@@ -26,6 +26,9 @@ class Patio(Base):
     timezone: Mapped[str] = mapped_column(String(50), nullable=False, default="America/Mexico_City")
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     anticipacion_minima_horas: Mapped[int] = mapped_column(Integer, nullable=False, default=24)
+    ubicacion_entrada_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("ubicaciones.id"), nullable=True
+    )
 
 
 class Carril(Base):
