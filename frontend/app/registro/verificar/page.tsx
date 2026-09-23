@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { ApiError, verificarCliente } from "@/lib/api";
 import styles from "../page.module.css";
 
+export const dynamic = "force-static"; 
+
 export default function VerificarPage() {
   const searchParams = useSearchParams();
   const emailInicial = searchParams.get("email") ?? "";
