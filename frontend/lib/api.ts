@@ -140,12 +140,18 @@ export async function getContenedor(token: string, id: string): Promise<Contened
 
 export async function listarContenedores(
   token: string,
-  filtros?: { estado?: EstadoContenedor; patio_id?: string; cliente_id?: string }
+  filtros?: {
+    estado?: EstadoContenedor;
+    patio_id?: string;
+    cliente_id?: string;
+    sin_ubicacion?: boolean;
+  }
 ): Promise<Contenedor[]> {
   const params = new URLSearchParams();
   if (filtros?.estado) params.set("estado", filtros.estado);
   if (filtros?.patio_id) params.set("patio_id", filtros.patio_id);
   if (filtros?.cliente_id) params.set("cliente_id", filtros.cliente_id);
+  if (filtros?.sin_ubicacion) params.set("sin_ubicacion", "true");
   const query = params.toString();
   return request<Contenedor[]>(`/api/contenedores${query ? `?${query}` : ""}`, { token });
 }
@@ -194,6 +200,8 @@ export async function crearMovimiento(
     tipo: TipoMovimiento;
     override_manual?: boolean;
     motivo_override?: string;
+    score_sugerido?: number;
+    score_elegido?: number;
   }
 ): Promise<Movimiento> {
   return request<Movimiento>("/api/movimientos", {
@@ -207,6 +215,8 @@ export interface SugerenciaUbicacion {
   ubicacion_id: string;
   codigo: string;
   costo: number;
+  tira_id: string;
+  nivel: number;
 }
 
 export async function sugerirUbicacion(
@@ -318,4 +328,67 @@ export async function solicitarContenedor(
     token,
     body: JSON.stringify(payload),
   });
+}
+
+export interface TiraMapa {
+  id: string;
+  codigo: string;
+  orden: number;
+  niveles_totales: number;
+  niveles_activos: number;
+  niveles_ocupados: number;
+}
+
+export interface TramoMapa {
+  id: string;
+  codigo: string;
+  orden: number;
+  tiras: TiraMapa[];
+}
+
+export interface CarrilMapa {
+  id: string;
+  codigo: string;
+  orden: number;
+  tipo_teorico: TipoContenedor | null;
+  tramos: TramoMapa[];
+}
+
+export interface MapaPatio {
+  patio_id: string;
+  ubicacion_entrada_id: string | null;
+  resumen: { ubicaciones_activas: number; ocupadas: number };
+  carriles: CarrilMapa[];
+}
+
+export interface ContenedorEnNivel {
+  id: string;
+  numero_contenedor: string;
+  tipo: TipoContenedor;
+  tamano: TamanoContenedor;
+  peso_kg: number;
+  estado: EstadoContenedor;
+}
+
+export interface NivelTira {
+  nivel: number;
+  ubicacion_id: string;
+  codigo: string;
+  activo: boolean;
+  capacidad_peso_kg: number;
+  contenedor: ContenedorEnNivel | null;
+}
+
+export interface DetalleTira {
+  tira_id: string;
+  codigo: string;
+  niveles: NivelTira[];
+}
+
+export async function obtenerMapaPatio(token: string, patioId: string): Promise<MapaPatio> {
+  return request<MapaPatio>(`/api/patios/${patioId}/mapa`, { token });
+}
+
+export async function obtenerDetalleTira(token: string, tiraId: string): Promise<DetalleTira> {
+  return request<DetalleTira>(`/api/tiras/${tiraId}`, { token });
 }

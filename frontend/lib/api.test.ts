@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   login,
+  obtenerMapaPatio,
   ApiError,
   listPatios,
   createPatio,
@@ -175,6 +176,8 @@ describe("sugerirUbicacion", () => {
       ubicacion_id: "u1",
       codigo: "A1-T1-S1-N1",
       costo: 1.3,
+      tira_id: "t1",
+      nivel: 1,
     };
     fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => sugerencia });
 
@@ -443,6 +446,42 @@ describe("actualizarPatio", () => {
         method: "PATCH",
         body: JSON.stringify({ anticipacion_minima_horas: 48 }),
       })
+    );
+  });
+});
+
+describe("obtenerMapaPatio", () => {
+  it("pide el mapa del patio con el token", async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        patio_id: "p1",
+        ubicacion_entrada_id: "u1",
+        resumen: { ubicaciones_activas: 10, ocupadas: 3 },
+        carriles: [],
+      }),
+    });
+
+    const mapa = await obtenerMapaPatio("token", "p1");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8000/api/patios/p1/mapa",
+      expect.objectContaining({ headers: expect.objectContaining({ Authorization: "Bearer token" }) })
+    );
+    expect(mapa.resumen.ocupadas).toBe(3);
+  });
+});
+
+describe("listarContenedores", () => {
+  it("manda sin_ubicacion en la query cuando se pide", async () => {
+    fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => [] });
+
+    await listarContenedores("token", { patio_id: "p1", sin_ubicacion: true });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8000/api/contenedores?patio_id=p1&sin_ubicacion=true",
+      expect.anything()
     );
   });
 });

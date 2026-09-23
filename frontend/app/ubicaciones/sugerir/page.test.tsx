@@ -36,6 +36,8 @@ describe("SugerirUbicacionPage", () => {
       ubicacion_id: "u1",
       codigo: "A1-T1-S1-N1",
       costo: 1.3,
+      tira_id: "t1",
+      nivel: 1,
     });
 
     const user = userEvent.setup();
