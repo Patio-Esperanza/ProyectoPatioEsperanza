@@ -16,6 +16,8 @@ services:
       pip install --no-cache-dir -r requirements.txt
     run_command: |
       PYTHONPATH=. alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
+    routes:
+      - path: /api
     health_check:
       http_path: /api/health
       initial_delay_seconds: 30
