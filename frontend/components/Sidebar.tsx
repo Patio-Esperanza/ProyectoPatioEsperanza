@@ -27,6 +27,7 @@ const SECCIONES: Seccion[] = [
   {
     titulo: "Operación",
     enlaces: [
+      { href: "/mapa", texto: "Mapa del patio" },
       { href: "/contenedores", texto: "Contenedores" },
       { href: "/movimientos", texto: "Movimientos" },
       { href: "/ubicaciones/sugerir", texto: "Sugerir ubicación" },
