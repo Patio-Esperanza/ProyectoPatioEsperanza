@@ -42,7 +42,7 @@ services:
         value: "60"
         scope: RUN_TIME
       - key: CORS_ORIGINS
-        value: "https://patio-esperanza-xxxxx.ondigitalocean.app"
+        value: "https://patio-esperanza-o7e6x.ondigitalocean.app"
         scope: RUN_TIME
       - key: SENDGRID_API_KEY
         value: "CAMBIAR_POR_API_KEY"
@@ -70,9 +70,11 @@ services:
     routes:
       - path: /
     envs:
+      # ${api.PUBLIC_URL} solo resuelve en RUN_TIME, nunca en BUILD_TIME (limitacion de DO
+      # App Platform). Next.js incrusta NEXT_PUBLIC_* en el bundle durante el build, asi que
+      # una variable bindable aqui queda vacia y cae al fallback "http://localhost:8000".
+      # api y web comparten el mismo dominio con rutas /api y /, asi que dejamos el valor
+      # vacio para que las llamadas sean relativas al mismo origen.
       - key: NEXT_PUBLIC_API_URL
-        value: "${api.PUBLIC_URL}"
+        value: ""
         scope: BUILD_TIME
-      - key: NEXT_PUBLIC_API_URL
-        value: "${api.PUBLIC_URL}"
-        scope: RUN_TIME
