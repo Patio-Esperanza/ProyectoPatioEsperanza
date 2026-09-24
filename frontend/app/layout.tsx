@@ -1,19 +1,24 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import { AuthProvider } from "@/lib/auth-context";
 import { AppShell } from "@/components/AppShell";
-import "./globals.css";
+import "@/app/globals.css";
 
-const plexSans = IBM_Plex_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+const plexSans = localFont({
+  src: "./fonts/ibm-plex-sans-latin-variable.woff2",
+  weight: "400 700",
   variable: "--font-plex-sans",
+  display: "swap",
 });
 
-const plexMono = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
+const plexMono = localFont({
+  src: [
+    { path: "./fonts/ibm-plex-mono-latin-400.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/ibm-plex-mono-latin-500.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/ibm-plex-mono-latin-600.woff2", weight: "600", style: "normal" },
+  ],
   variable: "--font-plex-mono",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
