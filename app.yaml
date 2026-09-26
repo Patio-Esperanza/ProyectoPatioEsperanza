@@ -18,6 +18,7 @@ services:
       PYTHONPATH=. alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
     routes:
       - path: /api
+        preserve_path_prefix: true
     health_check:
       http_path: /api/health
       initial_delay_seconds: 30
@@ -27,15 +28,15 @@ services:
       failure_threshold: 3
     envs:
       - key: DATABASE_URL
-        value: "EV[1:qRNk0YAoqYYy6q8goEwDmDkFFqLDUimI:+J70amFBEIB3ZGOzXGFAW48PahGyTBlE6BKZhouf+2RrH5/aFyA8QQzBgP6B26Kn/efz2qQ=]"
+        value: "EV[1:CGuvkr18JF9dBsZ75dbjenK3Z2AiTQZx:PFSqga/r/uLjTWpifDRRuyqpW9SoIKaFcY5LiKxP+qexMu5EJ6XXy/4asdMlC3SK3QuEv6j44FghhCny2IDeTM22wrg2kDw2Rh+mviIpMVwYwxd5TMwr6xaruywLGtO7hSOQ4J8bTVBDkz1V6Z1uM3GgtB6iM+rxLRi76qTazO/ztT597pHC4+uFqshUtU0owksh+6Ebp1SYNsvozww8]"
         scope: RUN_TIME
         type: SECRET
       - key: MIGRATIONS_DATABASE_URL
-        value: "EV[1:k/sMDWVcP3F64L5uZRWrIHhM1/sl6lTw:sSERxvg0fuAuzjvosa2a9FDK8NAKPH8kN7mC1Jc3vyYq/cSWxYlGYrtmimvy0bA8/WHuqLg=]"
+        value: "EV[1:fg1/4w1nycoxcfxTPsDjJD9Js+C5sQSP:KHHkpUT/we0oK7LwAfzDtGYY8R8kOsh7vvMv5H6nb3kACVH3GavbCAq3tfMPAXBHpz7pJ1UrpUU2ZDpAKDdNyrNx/sneCUdjaLECuEPYaUS+eIIwXxJy/o/610qECXCXXJxW8fEX8q7c0URKx+5PZRxU2K64viL8sZBlNnvXBAllUjK5eTx/BGfReBNWCHIO10+ELekmhyFlkvCwHZeS]"
         scope: RUN_TIME
         type: SECRET
       - key: JWT_SECRET
-        value: "EV[1:+xUToZbptL2zU1+QVEFy5tuGNCRoPjN9:q8Z3KS91ZZYZBsEi9tb7mKupqT59UmunZeTw8OU/tU/yMzltlQ6cTtA=]"
+        value: "EV[1:0Uqa4VCBUupkY/b/ChfV+NzyeF5h8iDb:J1mTZWN6u+4JanMpBfQGtVgYECbVdpZVgRh8y8v4aObMl3wVU1inPeToQIFw+l2oQVGaqQtHXkwlheFhNugkPbZDACq5O+U8n+4bybk1rJc=]"
         scope: RUN_TIME
         type: SECRET
       - key: JWT_EXPIRES_MINUTES
@@ -45,7 +46,7 @@ services:
         value: "https://patio-esperanza-o7e6x.ondigitalocean.app"
         scope: RUN_TIME
       - key: SENDGRID_API_KEY
-        value: "EV[1:TI2+wIdtAJZ20a8loxJY9VthZ2g1vGAe:0F67XypFzGW0mRqm9Q58xe5GIq0zVnxWkjT3Zz9JoKx8+3o=]"
+        value: "EV[1:HcnPICu5SsIHxuz3OBpCXyB5Wnfd//sP:tXhJFF3sDS/dSam+DG8qjratZWHVzYmhYOlD7eMHLd/bW8RH4lnV3sKrp3UZwG6oag56qbwCmkccb7AbZaANyYj5s8NGox8SaYJ6WRPwq2yQaRf0Cw==]"
         scope: RUN_TIME
         type: SECRET
       - key: SENDGRID_FROM_EMAIL
