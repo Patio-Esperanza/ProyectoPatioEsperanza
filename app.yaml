@@ -27,15 +27,15 @@ services:
       failure_threshold: 3
     envs:
       - key: DATABASE_URL
-        value: "CAMBIAR_POR_URL_DEL_CLUSTER_EXISTENTE"
+        value: "EV[1:qRNk0YAoqYYy6q8goEwDmDkFFqLDUimI:+J70amFBEIB3ZGOzXGFAW48PahGyTBlE6BKZhouf+2RrH5/aFyA8QQzBgP6B26Kn/efz2qQ=]"
         scope: RUN_TIME
         type: SECRET
       - key: MIGRATIONS_DATABASE_URL
-        value: "CAMBIAR_POR_URL_DEL_CLUSTER_EXISTENTE"
+        value: "EV[1:k/sMDWVcP3F64L5uZRWrIHhM1/sl6lTw:sSERxvg0fuAuzjvosa2a9FDK8NAKPH8kN7mC1Jc3vyYq/cSWxYlGYrtmimvy0bA8/WHuqLg=]"
         scope: RUN_TIME
         type: SECRET
       - key: JWT_SECRET
-        value: "CAMBIAR_POR_SECRETO_LARGO"
+        value: "EV[1:+xUToZbptL2zU1+QVEFy5tuGNCRoPjN9:q8Z3KS91ZZYZBsEi9tb7mKupqT59UmunZeTw8OU/tU/yMzltlQ6cTtA=]"
         scope: RUN_TIME
         type: SECRET
       - key: JWT_EXPIRES_MINUTES
@@ -45,7 +45,7 @@ services:
         value: "https://patio-esperanza-o7e6x.ondigitalocean.app"
         scope: RUN_TIME
       - key: SENDGRID_API_KEY
-        value: "CAMBIAR_POR_API_KEY"
+        value: "EV[1:TI2+wIdtAJZ20a8loxJY9VthZ2g1vGAe:0F67XypFzGW0mRqm9Q58xe5GIq0zVnxWkjT3Zz9JoKx8+3o=]"
         scope: RUN_TIME
         type: SECRET
       - key: SENDGRID_FROM_EMAIL
