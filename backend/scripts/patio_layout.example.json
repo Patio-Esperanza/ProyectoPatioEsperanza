@@ -1,0 +1,37 @@
+{
+  "carriles": [
+    {
+      "codigo": "A01",
+      "tipo_teorico": "lleno",
+      "tramos": [
+        {
+          "codigo": "T01",
+          "tiras": [
+            { "codigo": "R01", "niveles": 5 },
+            { "codigo": "R02", "niveles": 3 }
+          ]
+        },
+        {
+          "codigo": "T02",
+          "tiras": [
+            { "codigo": "R01", "niveles": 4 }
+          ]
+        }
+      ]
+    },
+    {
+      "codigo": "A02",
+      "tipo_teorico": "vacio",
+      "tramos": [
+        {
+          "codigo": "T01",
+          "tiras": [
+            { "codigo": "R01", "niveles": 5 },
+            { "codigo": "R02", "niveles": 5 },
+            { "codigo": "R03", "niveles": 2 }
+          ]
+        }
+      ]
+    }
+  ]
+}
