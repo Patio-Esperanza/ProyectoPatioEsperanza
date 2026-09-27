@@ -10,6 +10,26 @@ export class ApiError extends Error {
   }
 }
 
+function formatDetail(detail: unknown, fallback: string): string {
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => {
+        if (item && typeof item === "object" && "msg" in item) {
+          const loc = Array.isArray((item as { loc?: unknown[] }).loc)
+            ? (item as { loc: unknown[] }).loc.join(".")
+            : undefined;
+          const msg = String((item as { msg: unknown }).msg);
+          return loc ? `${loc}: ${msg}` : msg;
+        }
+        return typeof item === "string" ? item : JSON.stringify(item);
+      })
+      .join("; ");
+  }
+  if (detail && typeof detail === "object") return JSON.stringify(detail);
+  return fallback;
+}
+
 async function request<T>(
   path: string,
   options: RequestInit & { token?: string } = {}
@@ -31,7 +51,7 @@ async function request<T>(
     let detail = response.statusText;
     try {
       const errorBody = await response.json();
-      detail = errorBody.detail ?? detail;
+      detail = formatDetail(errorBody.detail, detail);
     } catch {
       // sin cuerpo JSON en la respuesta de error
     }
@@ -221,7 +241,9 @@ export interface SugerenciaUbicacion {
 
 export async function sugerirUbicacion(
   token: string,
-  payload: { patio_id: string; contenedor_id: string; punto_referencia_ubicacion_id: string }
+  payload:
+    | { patio_id: string; contenedor_id: string; punto_referencia_ubicacion_id: string }
+    | { patio_id: string; numero_contenedor: string; punto_referencia_codigo: string }
 ): Promise<SugerenciaUbicacion> {
   return request<SugerenciaUbicacion>("/api/ubicaciones/sugerir", {
     method: "POST",

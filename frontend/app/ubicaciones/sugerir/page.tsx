@@ -11,8 +11,8 @@ import styles from "./page.module.css";
 function SugerirUbicacionContent() {
   const { token } = useAuth();
   const [patioId, setPatioId] = useState("");
-  const [contenedorId, setContenedorId] = useState("");
-  const [puntoReferenciaId, setPuntoReferenciaId] = useState("");
+  const [numeroContenedor, setNumeroContenedor] = useState("");
+  const [puntoReferenciaCodigo, setPuntoReferenciaCodigo] = useState("");
   const [resultado, setResultado] = useState<SugerenciaUbicacion | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -26,8 +26,8 @@ function SugerirUbicacionContent() {
     try {
       const sugerencia = await sugerirUbicacion(token, {
         patio_id: patioId,
-        contenedor_id: contenedorId,
-        punto_referencia_ubicacion_id: puntoReferenciaId,
+        numero_contenedor: numeroContenedor,
+        punto_referencia_codigo: puntoReferenciaCodigo,
       });
       setResultado(sugerencia);
     } catch (err) {
@@ -55,19 +55,20 @@ function SugerirUbicacionContent() {
         <label htmlFor="patio_id">Patio</label>
         <PatioSelect id="patio_id" value={patioId} onChange={setPatioId} />
 
-        <label htmlFor="contenedor_id">ID de contenedor</label>
+        <label htmlFor="numero_contenedor">Número de contenedor</label>
         <input
-          id="contenedor_id"
-          value={contenedorId}
-          onChange={(e) => setContenedorId(e.target.value)}
+          id="numero_contenedor"
+          value={numeroContenedor}
+          onChange={(e) => setNumeroContenedor(e.target.value)}
           required
         />
 
-        <label htmlFor="punto_referencia_ubicacion_id">ID de ubicación de referencia</label>
+        <label htmlFor="punto_referencia_codigo">Código de ubicación de referencia</label>
         <input
-          id="punto_referencia_ubicacion_id"
-          value={puntoReferenciaId}
-          onChange={(e) => setPuntoReferenciaId(e.target.value)}
+          id="punto_referencia_codigo"
+          value={puntoReferenciaCodigo}
+          onChange={(e) => setPuntoReferenciaCodigo(e.target.value)}
+          placeholder="A01-T01-R01-N1"
           required
         />
 

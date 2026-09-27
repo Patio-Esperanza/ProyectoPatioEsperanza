@@ -1,6 +1,6 @@
 import uuid
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from app.models.enums import TipoMovimiento
 
@@ -24,8 +24,18 @@ class MovimientoOut(BaseModel):
 
 class SugerenciaUbicacionRequest(BaseModel):
     patio_id: uuid.UUID
-    contenedor_id: uuid.UUID
-    punto_referencia_ubicacion_id: uuid.UUID
+    contenedor_id: uuid.UUID | None = None
+    numero_contenedor: str | None = None
+    punto_referencia_ubicacion_id: uuid.UUID | None = None
+    punto_referencia_codigo: str | None = None
+
+    @model_validator(mode="after")
+    def _validar_identificadores(self) -> "SugerenciaUbicacionRequest":
+        if self.contenedor_id is None and not self.numero_contenedor:
+            raise ValueError("Se requiere contenedor_id o numero_contenedor")
+        if self.punto_referencia_ubicacion_id is None and not self.punto_referencia_codigo:
+            raise ValueError("Se requiere punto_referencia_ubicacion_id o punto_referencia_codigo")
+        return self
 
 
 class SugerenciaUbicacionResponse(BaseModel):
