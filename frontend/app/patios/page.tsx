@@ -1,10 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
 import { ROLES_POR_RUTA } from "@/lib/rutas";
 import { useAuth } from "@/lib/auth-context";
-import { ApiError, actualizarPatio, createPatio, listPatios, type Patio } from "@/lib/api";
+import {
+  ApiError,
+  actualizarPatio,
+  configurarLayoutPatio,
+  createPatio,
+  listPatios,
+  type LayoutPatioResultado,
+  type Patio,
+} from "@/lib/api";
 import {
   Alert,
   Button,
@@ -25,6 +33,16 @@ function PatiosContent() {
   const [nombre, setNombre] = useState("");
   const [codigo, setCodigo] = useState("");
   const [creating, setCreating] = useState(false);
+  const [layoutAbierto, setLayoutAbierto] = useState<string | null>(null);
+  const [layoutValores, setLayoutValores] = useState({
+    carriles: "",
+    tramos: "",
+    tiras: "",
+    niveles: "",
+  });
+  const [layoutEnviando, setLayoutEnviando] = useState(false);
+  const [layoutResultado, setLayoutResultado] = useState<LayoutPatioResultado | null>(null);
+  const [layoutErrorLocal, setLayoutErrorLocal] = useState<string | null>(null);
 
   const esAdmin = user?.rol === "admin";
 
@@ -73,17 +91,146 @@ function PatiosContent() {
     }
   }
 
+  function abrirLayout(patioId: string) {
+    setLayoutAbierto(patioId);
+    setLayoutValores({ carriles: "", tramos: "", tiras: "", niveles: "" });
+    setLayoutResultado(null);
+    setLayoutErrorLocal(null);
+  }
+
+  function cerrarLayout() {
+    setLayoutAbierto(null);
+  }
+
+  function actualizarCampoLayout(campo: keyof typeof layoutValores) {
+    return (event: ChangeEvent<HTMLInputElement>) => {
+      const valor = event.target.value;
+      setLayoutValores((previo) => ({ ...previo, [campo]: valor }));
+    };
+  }
+
+  function layoutValoresSonValidos() {
+    const { carriles, tramos, tiras, niveles } = layoutValores;
+    const numeros = [carriles, tramos, tiras, niveles].map(Number);
+    if (numeros.some((n) => Number.isNaN(n))) return false;
+    const [nCarriles, nTramos, nTiras, nNiveles] = numeros;
+    return nCarriles >= 1 && nTramos >= 1 && nTiras >= 1 && nNiveles >= 1 && nNiveles <= 5;
+  }
+
+  async function handleConfigurarLayout(event: FormEvent<HTMLFormElement>, patioId: string) {
+    event.preventDefault();
+    if (!token || !layoutValoresSonValidos()) return;
+
+    setLayoutEnviando(true);
+    setLayoutErrorLocal(null);
+    try {
+      const resultado = await configurarLayoutPatio(token, patioId, {
+        carriles: Number(layoutValores.carriles),
+        tramos: Number(layoutValores.tramos),
+        tiras: Number(layoutValores.tiras),
+        niveles: Number(layoutValores.niveles),
+      });
+      setLayoutResultado(resultado);
+    } catch (err) {
+      setLayoutErrorLocal(err instanceof ApiError ? err.message : "No se pudo configurar el layout");
+    } finally {
+      setLayoutEnviando(false);
+    }
+  }
+
   const columnas = [
     { key: "codigo", header: "Código", mono: true },
     { key: "nombre", header: "Nombre" },
     ...(esAdmin
-      ? [{ key: "anticipacion", header: "Anticipación mínima (h)", align: "end" as const }]
+      ? [
+          { key: "anticipacion", header: "Anticipación mínima (h)", align: "end" as const },
+          { key: "layout", header: "Layout", align: "end" as const },
+        ]
       : []),
   ];
 
   function renderCelda(patio: Patio, key: string) {
     if (key === "codigo") return patio.codigo;
     if (key === "nombre") return patio.nombre;
+    if (key === "layout") {
+      if (layoutAbierto !== patio.id) {
+        return (
+          <span className={styles.celdaLayout}>
+            <Button variant="secondary" size="sm" onClick={() => abrirLayout(patio.id)}>
+              Configurar layout
+            </Button>
+          </span>
+        );
+      }
+      return (
+        <div className={styles.celdaLayout}>
+          <form
+            className={styles.formularioLayout}
+            onSubmit={(e) => handleConfigurarLayout(e, patio.id)}
+          >
+            <div className={styles.camposLayout}>
+              <Field
+                label="Carriles"
+                id={`layout-carriles-${patio.id}`}
+                type="number"
+                min={1}
+                required
+                className={styles.campoLayout}
+                value={layoutValores.carriles}
+                onChange={actualizarCampoLayout("carriles")}
+              />
+              <Field
+                label="Tramos"
+                id={`layout-tramos-${patio.id}`}
+                type="number"
+                min={1}
+                required
+                className={styles.campoLayout}
+                value={layoutValores.tramos}
+                onChange={actualizarCampoLayout("tramos")}
+              />
+              <Field
+                label="Tiras"
+                id={`layout-tiras-${patio.id}`}
+                type="number"
+                min={1}
+                required
+                className={styles.campoLayout}
+                value={layoutValores.tiras}
+                onChange={actualizarCampoLayout("tiras")}
+              />
+              <Field
+                label="Niveles"
+                id={`layout-niveles-${patio.id}`}
+                type="number"
+                min={1}
+                max={5}
+                required
+                className={styles.campoLayout}
+                value={layoutValores.niveles}
+                onChange={actualizarCampoLayout("niveles")}
+              />
+            </div>
+            {layoutResultado && (
+              <Alert tone="success">
+                Se crearon {layoutResultado.ubicaciones_creadas} ubicaciones en{" "}
+                {layoutResultado.carriles_creados} carriles nuevos. {layoutResultado.carriles_saltados}{" "}
+                carriles ya existían y se omitieron.
+              </Alert>
+            )}
+            {layoutErrorLocal && <Alert tone="danger">{layoutErrorLocal}</Alert>}
+            <div className={styles.accionesLayout}>
+              <Button type="button" variant="ghost" size="sm" onClick={cerrarLayout}>
+                Cerrar
+              </Button>
+              <Button type="submit" size="sm" loading={layoutEnviando}>
+                Aplicar
+              </Button>
+            </div>
+          </form>
+        </div>
+      );
+    }
     return (
       // El envoltorio de Field es un bloque y llenaría la celda, dejando el campo pegado
       // a la izquierda aunque la columna esté alineada a la derecha.

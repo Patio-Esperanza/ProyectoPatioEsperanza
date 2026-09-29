@@ -39,6 +39,34 @@
   text-align: end;
 }
 
+.celdaLayout {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.formularioLayout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 220px;
+}
+
+.camposLayout {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-2);
+}
+
+.campoLayout {
+  max-width: 100px;
+}
+
+.accionesLayout {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
 @media (min-width: 768px) {
   .main {
     padding-inline: var(--space-6);
