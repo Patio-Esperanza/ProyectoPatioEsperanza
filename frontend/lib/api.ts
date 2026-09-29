@@ -109,6 +109,31 @@ export async function createPatio(
   });
 }
 
+export interface LayoutPatioPayload {
+  carriles: number;
+  tramos: number;
+  tiras: number;
+  niveles: number;
+}
+
+export interface LayoutPatioResultado {
+  carriles_creados: number;
+  carriles_saltados: number;
+  ubicaciones_creadas: number;
+}
+
+export async function configurarLayoutPatio(
+  token: string,
+  patioId: string,
+  payload: LayoutPatioPayload
+): Promise<LayoutPatioResultado> {
+  return request<LayoutPatioResultado>(`/api/patios/${patioId}/layout`, {
+    method: "POST",
+    token,
+    body: JSON.stringify(payload),
+  });
+}
+
 export type TipoContenedor = "lleno" | "vacio";
 export type TamanoContenedor = "20" | "40" | "45";
 export type EstadoContenedor =

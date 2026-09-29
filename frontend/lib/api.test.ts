@@ -450,6 +450,44 @@ describe("actualizarPatio", () => {
   });
 });
 
+describe("configurarLayoutPatio", () => {
+  it("posts the layout payload and returns the counts", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ carriles_creados: 2, carriles_saltados: 0, ubicaciones_creadas: 6 })
+    );
+
+    const resultado = await configurarLayoutPatio("token", "p1", {
+      carriles: 2,
+      tramos: 1,
+      tiras: 1,
+      niveles: 3,
+    });
+
+    expect(resultado).toEqual({ carriles_creados: 2, carriles_saltados: 0, ubicaciones_creadas: 6 });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8000/api/patios/p1/layout",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ carriles: 2, tramos: 1, tiras: 1, niveles: 3 }),
+        headers: expect.objectContaining({ Authorization: "Bearer token" }),
+      })
+    );
+  });
+
+  it("throws ApiError with the backend detail on failure", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 422,
+      statusText: "Unprocessable Entity",
+      json: async () => ({ detail: "niveles debe estar entre 1 y 5" }),
+    });
+
+    await expect(
+      configurarLayoutPatio("token", "p1", { carriles: 1, tramos: 1, tiras: 1, niveles: 9 })
+    ).rejects.toThrow("niveles debe estar entre 1 y 5");
+  });
+});
+
 describe("obtenerMapaPatio", () => {
   it("pide el mapa del patio con el token", async () => {
     fetchMock.mockResolvedValue({
