@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.config import settings
 from app.models.enums import TipoContenedor
 from app.models.ubicacion import Carril, Patio, Tira, Tramo, Ubicacion
+from app.services.patio_layout import sembrar_layout_uniforme
 
 NIVEL_MIN = 1
 NIVEL_MAX = 5
@@ -198,7 +199,9 @@ async def main() -> int:
         if carriles_config is not None:
             creados, saltados = await _sembrar_config(db, patio, carriles_config)
         else:
-            creados, saltados = await _sembrar_uniforme(db, patio, args)
+            _carriles_creados, saltados, creados = await sembrar_layout_uniforme(
+                db, patio, args.carriles, args.tramos, args.tiras, args.niveles
+            )
 
         await db.commit()
         print(f"Ubicaciones creadas: {creados}. Carriles saltados por ya existir: {saltados}.")
