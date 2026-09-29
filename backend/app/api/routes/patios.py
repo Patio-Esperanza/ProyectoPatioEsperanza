@@ -10,8 +10,9 @@ from app.db import get_db
 from app.models.enums import RolUsuario
 from app.models.ubicacion import Patio
 from app.schemas.mapa import MapaPatioOut
-from app.schemas.patio import PatioCreate, PatioOut, PatioUpdate
+from app.schemas.patio import LayoutPatioCreate, LayoutPatioOut, PatioCreate, PatioOut, PatioUpdate
 from app.services.mapa_patio import obtener_mapa
+from app.services.patio_layout import sembrar_layout_uniforme
 
 router = APIRouter()
 
@@ -104,3 +105,45 @@ async def mapa_patio(
     if existe.scalar_one_or_none() is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Patio no encontrado")
     return await obtener_mapa(db, patio_id)
+
+
+@router.post("/{patio_id}/layout", response_model=LayoutPatioOut)
+async def configurar_layout_patio(
+    patio_id: uuid.UUID,
+    payload: LayoutPatioCreate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(require_roles(RolUsuario.ADMIN)),
+) -> LayoutPatioOut:
+    result = await db.execute(select(Patio).where(Patio.id == patio_id))
+    patio = result.scalar_one_or_none()
+    if patio is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Patio no encontrado")
+
+    carriles_creados, carriles_saltados, ubicaciones_creadas = await sembrar_layout_uniforme(
+        db, patio, payload.carriles, payload.tramos, payload.tiras, payload.niveles
+    )
+
+    await registrar_auditoria(
+        db,
+        usuario_id=user.id,
+        rol=user.rol.value,
+        ip=request.client.host if request.client else "desconocida",
+        dispositivo=request.headers.get("user-agent", "desconocido"),
+        accion="configurar_layout",
+        entidad="patios",
+        entidad_id=str(patio.id),
+        valor_anterior=None,
+        valor_nuevo={
+            "carriles_creados": carriles_creados,
+            "carriles_saltados": carriles_saltados,
+            "ubicaciones_creadas": ubicaciones_creadas,
+        },
+        patio_id=patio.id,
+    )
+    await db.commit()
+    return LayoutPatioOut(
+        carriles_creados=carriles_creados,
+        carriles_saltados=carriles_saltados,
+        ubicaciones_creadas=ubicaciones_creadas,
+    )

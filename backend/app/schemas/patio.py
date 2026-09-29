@@ -22,3 +22,16 @@ class PatioOut(BaseModel):
     activo: bool
     anticipacion_minima_horas: int
     ubicacion_entrada_id: uuid.UUID | None = None
+
+
+class LayoutPatioCreate(BaseModel):
+    carriles: int = Field(gt=0)
+    tramos: int = Field(gt=0)
+    tiras: int = Field(gt=0)
+    niveles: int = Field(ge=1, le=5)
+
+
+class LayoutPatioOut(BaseModel):
+    carriles_creados: int
+    carriles_saltados: int
+    ubicaciones_creadas: int

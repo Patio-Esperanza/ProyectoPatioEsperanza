@@ -152,3 +152,105 @@ async def test_patio_expone_punto_de_entrada_nulo(client, db_session):
     assert response.status_code == 200
     patio = next(p for p in response.json() if p["codigo"] == "PE")
     assert patio["ubicacion_entrada_id"] is None
+
+
+@pytest.mark.anyio
+async def test_admin_configura_layout_de_patio(client, db_session):
+    await _crear_usuario_autenticado(db_session, RolUsuario.ADMIN)
+    token = _token(RolUsuario.ADMIN)
+    creado = await client.post(
+        "/api/patios", json={"nombre": "Patio Layout", "codigo": "PL1"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    patio_id = creado.json()["id"]
+
+    response = await client.post(
+        f"/api/patios/{patio_id}/layout",
+        json={"carriles": 2, "tramos": 1, "tiras": 1, "niveles": 3},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body == {"carriles_creados": 2, "carriles_saltados": 0, "ubicaciones_creadas": 6}
+
+
+@pytest.mark.anyio
+async def test_configurar_layout_es_idempotente_por_carril(client, db_session):
+    await _crear_usuario_autenticado(db_session, RolUsuario.ADMIN)
+    token = _token(RolUsuario.ADMIN)
+    creado = await client.post(
+        "/api/patios", json={"nombre": "Patio Layout 2", "codigo": "PL2"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    patio_id = creado.json()["id"]
+    payload = {"carriles": 2, "tramos": 1, "tiras": 1, "niveles": 2}
+    await client.post(
+        f"/api/patios/{patio_id}/layout", json=payload,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    response = await client.post(
+        f"/api/patios/{patio_id}/layout", json=payload,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "carriles_creados": 0,
+        "carriles_saltados": 2,
+        "ubicaciones_creadas": 0,
+    }
+
+
+@pytest.mark.anyio
+async def test_operador_no_puede_configurar_layout(client, db_session):
+    await _crear_usuario_autenticado(db_session, RolUsuario.ADMIN)
+    admin_token = _token(RolUsuario.ADMIN)
+    creado = await client.post(
+        "/api/patios", json={"nombre": "Patio Layout 3", "codigo": "PL3"},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    patio_id = creado.json()["id"]
+
+    op_token = _token(RolUsuario.OPERADOR)
+    response = await client.post(
+        f"/api/patios/{patio_id}/layout",
+        json={"carriles": 1, "tramos": 1, "tiras": 1, "niveles": 1},
+        headers={"Authorization": f"Bearer {op_token}"},
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.anyio
+async def test_configurar_layout_patio_inexistente_404(client, db_session):
+    await _crear_usuario_autenticado(db_session, RolUsuario.ADMIN)
+    token = _token(RolUsuario.ADMIN)
+
+    response = await client.post(
+        "/api/patios/00000000-0000-0000-0000-0000000000ff/layout",
+        json={"carriles": 1, "tramos": 1, "tiras": 1, "niveles": 1},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_configurar_layout_niveles_fuera_de_rango_422(client, db_session):
+    await _crear_usuario_autenticado(db_session, RolUsuario.ADMIN)
+    token = _token(RolUsuario.ADMIN)
+    creado = await client.post(
+        "/api/patios", json={"nombre": "Patio Layout 4", "codigo": "PL4"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    patio_id = creado.json()["id"]
+
+    response = await client.post(
+        f"/api/patios/{patio_id}/layout",
+        json={"carriles": 1, "tramos": 1, "tiras": 1, "niveles": 6},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 422
