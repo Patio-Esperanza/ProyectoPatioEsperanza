@@ -1,7 +1,7 @@
 # Configurar layout de patio desde el UI
 
 Fecha: 2026-09-29
-Estado: aprobado, pendiente de plan de implementación
+Estado: implementado
 
 ## Problema
 
