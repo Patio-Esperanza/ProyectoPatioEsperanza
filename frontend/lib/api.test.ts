@@ -27,6 +27,15 @@ import {
   listarContenedores,
   solicitarSalida,
   actualizarPatio,
+  obtenerPreviewReporte,
+  descargarReporteExcel,
+  listarReportesProgramados,
+  crearReporteProgramado,
+  actualizarReporteProgramado,
+  eliminarReporteProgramado,
+  ejecutarReporteProgramadoManual,
+  type ReportePreview,
+  type ReporteProgramado,
 } from "./api";
 
 const fetchMock = vi.fn();
@@ -520,6 +529,196 @@ describe("listarContenedores", () => {
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:8000/api/contenedores?patio_id=p1&sin_ubicacion=true",
       expect.anything()
+    );
+  });
+});
+
+const REPORTE_PREVIEW: ReportePreview = {
+  tipo: "containers-in-yard",
+  titulo: "Contenedores en Patio",
+  subtitulo: "Snapshot de contenedores activos",
+  total_registros: 1,
+  columnas: [{ key: "contenedor", label: "Contenedor", align: "center" }],
+  filas: [{ contenedor: "CSNU7862291" }],
+  kpis: [{ label: "Total", value: "1", tone: "info" }],
+  page: 1,
+  page_size: 25,
+  total_paginas: 1,
+};
+
+describe("obtenerPreviewReporte", () => {
+  it("pide el preview con filtros en la query", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(REPORTE_PREVIEW));
+
+    const result = await obtenerPreviewReporte("token", "containers-in-yard", {
+      patio_id: "p1",
+      page: 2,
+      page_size: 50,
+    });
+
+    expect(result).toEqual(REPORTE_PREVIEW);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8000/api/reportes/containers-in-yard/preview?patio_id=p1&page=2&page_size=50",
+      expect.objectContaining({ headers: expect.objectContaining({ Authorization: "Bearer token" }) })
+    );
+  });
+
+  it("pide el preview sin filtros", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(REPORTE_PREVIEW));
+
+    await obtenerPreviewReporte("token", "containers-in-yard");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8000/api/reportes/containers-in-yard/preview",
+      expect.anything()
+    );
+  });
+});
+
+describe("descargarReporteExcel", () => {
+  it("descarga el blob y dispara la descarga en el navegador", async () => {
+    const blob = new Blob(["binario"], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    fetchMock.mockResolvedValue({ ok: true, status: 200, blob: async () => blob });
+
+    const createObjectURL = vi.fn().mockReturnValue("blob:mock-url");
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal("URL", { ...window.URL, createObjectURL, revokeObjectURL });
+
+    const clickMock = vi.fn();
+    const anchor = document.createElement("a");
+    anchor.click = clickMock;
+    const createElementSpy = vi
+      .spyOn(document, "createElement")
+      .mockReturnValue(anchor as unknown as HTMLElement);
+
+    await descargarReporteExcel("token", "containers-in-yard", { patio_id: "p1" }, "reporte.xlsx");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8000/api/reportes/containers-in-yard/exportar?patio_id=p1",
+      expect.objectContaining({ headers: expect.objectContaining({ Authorization: "Bearer token" }) })
+    );
+    expect(createObjectURL).toHaveBeenCalledWith(blob);
+    expect(anchor.download).toBe("reporte.xlsx");
+    expect(clickMock).toHaveBeenCalled();
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:mock-url");
+
+    createElementSpy.mockRestore();
+  });
+
+  it("lanza ApiError cuando la respuesta falla", async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 404,
+      statusText: "Not Found",
+      json: async () => ({ detail: "Reporte no encontrado" }),
+    });
+
+    await expect(
+      descargarReporteExcel("token", "containers-in-yard", undefined, "reporte.xlsx")
+    ).rejects.toThrow("Reporte no encontrado");
+  });
+});
+
+const REPORTE_PROGRAMADO: ReporteProgramado = {
+  id: "rp1",
+  nombre: "Reporte Diario",
+  tipo_reporte: "containers-in-yard",
+  patio_id: null,
+  cliente_id: null,
+  frecuencia: "diario",
+  hora: 8,
+  minuto: 30,
+  dia_semana: null,
+  dia_mes: null,
+  destinatarios: ["ops@empresa.com"],
+  asunto: "Reporte Diario",
+  mensaje: null,
+  activo: true,
+  ultimo_envio: null,
+  ultimo_estado: null,
+  ultimo_error: null,
+  created_at: "2026-09-30T08:00:00Z",
+  updated_at: "2026-09-30T08:00:00Z",
+};
+
+describe("listarReportesProgramados", () => {
+  it("sends the bearer token and returns the list", async () => {
+    fetchMock.mockResolvedValue(jsonResponse([REPORTE_PROGRAMADO]));
+
+    const result = await listarReportesProgramados("token");
+
+    expect(result).toEqual([REPORTE_PROGRAMADO]);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8000/api/reportes/programados",
+      expect.objectContaining({ headers: expect.objectContaining({ Authorization: "Bearer token" }) })
+    );
+  });
+});
+
+describe("crearReporteProgramado", () => {
+  it("posts the payload as JSON", async () => {
+    fetchMock.mockResolvedValue({ ok: true, status: 201, json: async () => REPORTE_PROGRAMADO });
+
+    const result = await crearReporteProgramado("token", {
+      nombre: "Reporte Diario",
+      tipo_reporte: "containers-in-yard",
+      frecuencia: "diario",
+      hora: 8,
+      minuto: 30,
+      destinatarios: ["ops@empresa.com"],
+      asunto: "Reporte Diario",
+    });
+
+    expect(result).toEqual(REPORTE_PROGRAMADO);
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toContain("/api/reportes/programados");
+    expect(options.method).toBe("POST");
+  });
+});
+
+describe("actualizarReporteProgramado", () => {
+  it("patches partial fields", async () => {
+    const actualizado = { ...REPORTE_PROGRAMADO, activo: false };
+    fetchMock.mockResolvedValue(jsonResponse(actualizado));
+
+    const result = await actualizarReporteProgramado("token", "rp1", { activo: false });
+
+    expect(result.activo).toBe(false);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8000/api/reportes/programados/rp1",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ activo: false }),
+      })
+    );
+  });
+});
+
+describe("eliminarReporteProgramado", () => {
+  it("sends a DELETE request", async () => {
+    fetchMock.mockResolvedValue({ ok: true, status: 204, json: async () => undefined });
+
+    await eliminarReporteProgramado("token", "rp1");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8000/api/reportes/programados/rp1",
+      expect.objectContaining({ method: "DELETE" })
+    );
+  });
+});
+
+describe("ejecutarReporteProgramadoManual", () => {
+  it("posts to the ejecutar endpoint", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ detail: "Reporte enviado correctamente" }));
+
+    const result = await ejecutarReporteProgramadoManual("token", "rp1");
+
+    expect(result).toEqual({ detail: "Reporte enviado correctamente" });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8000/api/reportes/programados/rp1/ejecutar",
+      expect.objectContaining({ method: "POST" })
     );
   });
 });

@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
@@ -9,14 +11,26 @@ from app.api.routes import (
     contenedores,
     movimientos,
     patios,
+    reportes,
     tiras,
     ubicaciones,
     usuarios,
 )
 from app.config import settings
-from app.db import get_db
+from app.db import SessionLocal, get_db
+from app.services import reportes_scheduler
 
-app = FastAPI(title="Patio Esperanza API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    reportes_scheduler.iniciar_scheduler()
+    async with SessionLocal() as db:
+        await reportes_scheduler.sincronizar_tareas_desde_db(db)
+    yield
+    reportes_scheduler.apagar_scheduler()
+
+
+app = FastAPI(title="Patio Esperanza API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -46,3 +60,4 @@ app.include_router(ubicaciones.router, prefix="/api/ubicaciones", tags=["ubicaci
 app.include_router(tiras.router, prefix="/api/tiras", tags=["tiras"])
 app.include_router(usuarios.router, prefix="/api/usuarios", tags=["usuarios"])
 app.include_router(clientes.router, prefix="/api/clientes", tags=["clientes"])
+app.include_router(reportes.router, prefix="/api/reportes", tags=["reportes"])

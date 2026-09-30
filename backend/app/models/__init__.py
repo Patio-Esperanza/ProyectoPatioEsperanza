@@ -3,5 +3,6 @@
 from app.models.auditoria import Auditoria  # noqa: F401
 from app.models.cliente import Cliente  # noqa: F401
 from app.models.contenedor import Contenedor, Movimiento  # noqa: F401
+from app.models.reporte_programado import ReporteProgramado  # noqa: F401
 from app.models.ubicacion import Carril, Patio, Tira, Tramo, Ubicacion  # noqa: F401
 from app.models.usuario import Usuario, UsuarioPatio  # noqa: F401

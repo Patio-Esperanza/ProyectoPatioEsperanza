@@ -440,3 +440,185 @@ export async function obtenerMapaPatio(token: string, patioId: string): Promise<
 export async function obtenerDetalleTira(token: string, tiraId: string): Promise<DetalleTira> {
   return request<DetalleTira>(`/api/tiras/${tiraId}`, { token });
 }
+
+export type ReporteTipo =
+  | "containers-in-yard"
+  | "entry-movements"
+  | "departure-movements"
+  | "positions"
+  | "special-services";
+
+export type FrecuenciaReporte = "diario" | "semanal" | "mensual";
+
+export interface ReporteColumna {
+  key: string;
+  label: string;
+  align: "left" | "center" | "right";
+}
+
+export interface ReporteKpi {
+  label: string;
+  value: string;
+  subtext?: string | null;
+  tone: "info" | "success" | "warning" | "danger";
+}
+
+export interface ReportePreview {
+  tipo: ReporteTipo;
+  titulo: string;
+  subtitulo: string;
+  total_registros: number;
+  columnas: ReporteColumna[];
+  filas: Record<string, unknown>[];
+  kpis: ReporteKpi[];
+  page: number;
+  page_size: number;
+  total_paginas: number;
+}
+
+export interface FiltrosReportePayload {
+  fecha_inicio?: string;
+  fecha_fin?: string;
+  patio_id?: string;
+  cliente_id?: string;
+  busqueda?: string;
+  page?: number;
+  page_size?: number;
+}
+
+export interface ReporteProgramado {
+  id: string;
+  nombre: string;
+  tipo_reporte: ReporteTipo;
+  patio_id: string | null;
+  cliente_id: string | null;
+  frecuencia: FrecuenciaReporte;
+  hora: number;
+  minuto: number;
+  dia_semana: number | null;
+  dia_mes: number | null;
+  destinatarios: string[];
+  asunto: string;
+  mensaje: string | null;
+  activo: boolean;
+  ultimo_envio: string | null;
+  ultimo_estado: string | null;
+  ultimo_error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReporteProgramadoPayload {
+  nombre: string;
+  tipo_reporte: ReporteTipo;
+  patio_id?: string | null;
+  cliente_id?: string | null;
+  frecuencia: FrecuenciaReporte;
+  hora: number;
+  minuto: number;
+  dia_semana?: number | null;
+  dia_mes?: number | null;
+  destinatarios: string[];
+  asunto: string;
+  mensaje?: string | null;
+  activo?: boolean;
+}
+
+function construirQueryReporte(filtros?: FiltrosReportePayload): string {
+  const params = new URLSearchParams();
+  if (filtros?.fecha_inicio) params.set("fecha_inicio", filtros.fecha_inicio);
+  if (filtros?.fecha_fin) params.set("fecha_fin", filtros.fecha_fin);
+  if (filtros?.patio_id) params.set("patio_id", filtros.patio_id);
+  if (filtros?.cliente_id) params.set("cliente_id", filtros.cliente_id);
+  if (filtros?.busqueda) params.set("busqueda", filtros.busqueda);
+  if (filtros?.page) params.set("page", String(filtros.page));
+  if (filtros?.page_size) params.set("page_size", String(filtros.page_size));
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+export async function obtenerPreviewReporte(
+  token: string,
+  tipo: ReporteTipo,
+  filtros?: FiltrosReportePayload
+): Promise<ReportePreview> {
+  const query = construirQueryReporte(filtros);
+  return request<ReportePreview>(`/api/reportes/${tipo}/preview${query}`, { token });
+}
+
+export async function descargarReporteExcel(
+  token: string,
+  tipo: ReporteTipo,
+  filtros: FiltrosReportePayload | undefined,
+  nombreArchivo: string
+): Promise<void> {
+  const query = construirQueryReporte(filtros);
+  const response = await fetch(`${API_URL}/api/reportes/${tipo}/exportar${query}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response.ok) {
+    let detail = response.statusText;
+    try {
+      const errorBody = await response.json();
+      detail = formatDetail(errorBody.detail, detail);
+    } catch {
+      // sin cuerpo JSON en la respuesta de error
+    }
+    throw new ApiError(response.status, detail);
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const enlace = document.createElement("a");
+  enlace.href = url;
+  enlace.download = nombreArchivo;
+  document.body.appendChild(enlace);
+  enlace.click();
+  enlace.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+export async function listarReportesProgramados(token: string): Promise<ReporteProgramado[]> {
+  return request<ReporteProgramado[]>("/api/reportes/programados", { token });
+}
+
+export async function crearReporteProgramado(
+  token: string,
+  payload: ReporteProgramadoPayload
+): Promise<ReporteProgramado> {
+  return request<ReporteProgramado>("/api/reportes/programados", {
+    method: "POST",
+    token,
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function actualizarReporteProgramado(
+  token: string,
+  id: string,
+  payload: Partial<ReporteProgramadoPayload>
+): Promise<ReporteProgramado> {
+  return request<ReporteProgramado>(`/api/reportes/programados/${id}`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function eliminarReporteProgramado(token: string, id: string): Promise<void> {
+  return request<void>(`/api/reportes/programados/${id}`, {
+    method: "DELETE",
+    token,
+  });
+}
+
+export async function ejecutarReporteProgramadoManual(
+  token: string,
+  id: string
+): Promise<{ detail: string }> {
+  return request<{ detail: string }>(`/api/reportes/programados/${id}/ejecutar`, {
+    method: "POST",
+    token,
+  });
+}

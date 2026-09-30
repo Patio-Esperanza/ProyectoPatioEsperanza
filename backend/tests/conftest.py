@@ -27,9 +27,11 @@ BACKEND_DIR = Path(__file__).resolve().parents[1]
 
 @pytest.fixture(scope="session", autouse=True)
 def apply_migrations():
+    env = {**os.environ, "PYTHONPATH": str(BACKEND_DIR)}
     subprocess.run(
         [sys.executable, "-m", "alembic", "upgrade", "head"],
         cwd=BACKEND_DIR,
+        env=env,
         check=True,
     )
     yield
