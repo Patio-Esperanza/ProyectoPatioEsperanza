@@ -8,3 +8,4 @@ node_modules/
 .next/
 *.egg-info/
 .claude/settings.local.json
+Ejemplo de Reportes/

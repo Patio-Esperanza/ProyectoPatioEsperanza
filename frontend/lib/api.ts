@@ -415,6 +415,7 @@ export interface ContenedorEnNivel {
   tamano: TamanoContenedor;
   peso_kg: number;
   estado: EstadoContenedor;
+  fecha_ingreso: string;
 }
 
 export interface NivelTira {

@@ -5,6 +5,20 @@ import type { DetalleTira as DetalleTiraData } from "@/lib/api";
 import { Badge, Button, Field } from "@/components/ui";
 import styles from "./DetalleTira.module.css";
 
+function calcularDiasEnPatio(fechaIngreso: string): number {
+  const ingreso = new Date(fechaIngreso);
+  const ahora = new Date();
+  const diff = ahora.getTime() - ingreso.getTime();
+  return Math.floor(diff / (1000 * 60 * 60 * 24));
+}
+
+function calcularTonoDias(fechaIngreso: string): "success" | "warning" | "danger" {
+  const dias = calcularDiasEnPatio(fechaIngreso);
+  if (dias <= 7) return "success";
+  if (dias <= 14) return "warning";
+  return "danger";
+}
+
 interface DetalleTiraProps {
   detalle: DetalleTiraData;
   /** Id del contenedor pendiente elegido en el panel, o null si no hay ninguno. */
@@ -50,6 +64,9 @@ export function DetalleTira({
                 <Badge tone="info">{nivel.contenedor.tamano} ft</Badge>
                 <Badge tone={nivel.contenedor.tipo === "lleno" ? "warning" : "neutral"}>
                   {nivel.contenedor.tipo}
+                </Badge>
+                <Badge tone={calcularTonoDias(nivel.contenedor.fecha_ingreso)}>
+                  {calcularDiasEnPatio(nivel.contenedor.fecha_ingreso)}d
                 </Badge>
                 <span className={styles.peso}>{nivel.contenedor.peso_kg} kg</span>
               </span>

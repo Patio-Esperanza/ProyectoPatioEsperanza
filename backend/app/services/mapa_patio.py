@@ -158,6 +158,7 @@ async def obtener_detalle_tira(db: AsyncSession, tira_id: uuid.UUID) -> DetalleT
                         tamano=contenedor.tamano,
                         peso_kg=contenedor.peso_kg,
                         estado=contenedor.estado,
+                        fecha_ingreso=contenedor.created_at,
                     )
                 ),
             )

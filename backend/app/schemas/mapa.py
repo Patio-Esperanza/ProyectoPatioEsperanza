@@ -1,3 +1,4 @@
+import datetime
 import uuid
 
 from pydantic import BaseModel
@@ -48,6 +49,7 @@ class ContenedorEnNivelOut(BaseModel):
     tamano: TamanoContenedor
     peso_kg: int
     estado: EstadoContenedor
+    fecha_ingreso: datetime.datetime
 
 
 class NivelTiraOut(BaseModel):
