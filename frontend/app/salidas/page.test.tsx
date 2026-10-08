@@ -47,6 +47,7 @@ describe("SalidasPage", () => {
         tamano: "40",
         patio_id: "p1",
         estado: "solicitud_salida",
+        pin_pendiente: false,
         peso_kg: 18000,
         fecha_deseada_salida: "2026-10-05T12:00:00Z",
       },

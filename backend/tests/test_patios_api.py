@@ -1,9 +1,11 @@
 import uuid
 
 import pytest
+from sqlalchemy import select
 
 from app.core.security import create_access_token
 from app.models.enums import RolUsuario
+from app.models.ubicacion import Carril, Tira, Tramo, Ubicacion
 from app.models.usuario import Usuario
 
 _USUARIO_ID = "00000000-0000-0000-0000-000000000001"
@@ -254,3 +256,90 @@ async def test_configurar_layout_niveles_fuera_de_rango_422(client, db_session):
     )
 
     assert response.status_code == 422
+
+
+async def _crear_patio_con_layout(client, token, codigo="ENT", carriles=1):
+    headers = {"Authorization": f"Bearer {token}"}
+    creado = await client.post(
+        "/api/patios", json={"nombre": f"Patio {codigo}", "codigo": codigo}, headers=headers,
+    )
+    patio_id = creado.json()["id"]
+    layout = await client.post(
+        f"/api/patios/{patio_id}/layout",
+        json={"carriles": carriles, "tramos": 1, "tiras": 1, "niveles": 1}, headers=headers,
+    )
+    assert layout.status_code == 200
+    return patio_id
+
+
+async def _ubicacion_del_patio(db_session, patio_id: str, codigo: str) -> Ubicacion:
+    result = await db_session.execute(
+        select(Ubicacion)
+        .join(Tira, Tira.id == Ubicacion.tira_id)
+        .join(Tramo, Tramo.id == Tira.tramo_id)
+        .join(Carril, Carril.id == Tramo.carril_id)
+        .where(Carril.patio_id == uuid.UUID(patio_id), Ubicacion.codigo == codigo)
+    )
+    return result.scalars().one()
+
+
+@pytest.mark.anyio
+async def test_admin_fija_entrada_por_codigo(client, db_session):
+    await _crear_usuario_autenticado(db_session, RolUsuario.ADMIN)
+    token = _token(RolUsuario.ADMIN)
+    patio_id = await _crear_patio_con_layout(client, token)
+    ubicacion = await _ubicacion_del_patio(db_session, patio_id, "A01-T01-R01-N1")
+
+    response = await client.patch(
+        f"/api/patios/{patio_id}/entrada", json={"codigo": "A01-T01-R01-N1"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["ubicacion_entrada_id"] == str(ubicacion.id)
+
+
+@pytest.mark.anyio
+async def test_fijar_entrada_con_codigo_inexistente_404(client, db_session):
+    await _crear_usuario_autenticado(db_session, RolUsuario.ADMIN)
+    token = _token(RolUsuario.ADMIN)
+    patio_id = await _crear_patio_con_layout(client, token, codigo="ENTX")
+
+    response = await client.patch(
+        f"/api/patios/{patio_id}/entrada", json={"codigo": "Z99-T99-R99-N9"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_fijar_entrada_con_codigo_de_otro_patio_404(client, db_session):
+    await _crear_usuario_autenticado(db_session, RolUsuario.ADMIN)
+    token = _token(RolUsuario.ADMIN)
+    patio_destino = await _crear_patio_con_layout(client, token, codigo="ENTA", carriles=1)
+    patio_ajeno = await _crear_patio_con_layout(client, token, codigo="ENTB", carriles=2)
+
+    # A02 solo existe en patio_ajeno, no en patio_destino.
+    await _ubicacion_del_patio(db_session, patio_ajeno, "A02-T01-R01-N1")
+
+    response = await client.patch(
+        f"/api/patios/{patio_destino}/entrada", json={"codigo": "A02-T01-R01-N1"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_operador_no_puede_fijar_entrada_403(client, db_session):
+    await _crear_usuario_autenticado(db_session, RolUsuario.ADMIN)
+    admin_token = _token(RolUsuario.ADMIN)
+    patio_id = await _crear_patio_con_layout(client, admin_token, codigo="ENTC")
+
+    response = await client.patch(
+        f"/api/patios/{patio_id}/entrada", json={"codigo": "A01-T01-R01-N1"},
+        headers={"Authorization": f"Bearer {_token(RolUsuario.OPERADOR)}"},
+    )
+
+    assert response.status_code == 403

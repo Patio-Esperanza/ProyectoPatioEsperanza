@@ -12,6 +12,7 @@ const CONTENEDORES: Contenedor[] = [
     tamano: "40",
     patio_id: "p1",
     estado: "ingresado",
+    pin_pendiente: false,
     peso_kg: 18000,
   },
   {
@@ -21,6 +22,7 @@ const CONTENEDORES: Contenedor[] = [
     tamano: "20",
     patio_id: "p1",
     estado: "ingresado",
+    pin_pendiente: false,
     peso_kg: 3900,
   },
 ];

@@ -32,7 +32,7 @@ vi.mock("@/lib/api", async (importOriginal) => {
 });
 
 const PATIOS = [
-  { id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 24 },
+  { id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 24, ubicacion_entrada_id: null },
 ];
 
 const MAPA = {
@@ -83,6 +83,7 @@ const PENDIENTES = [
     patio_id: "p1",
     estado: "ingresado" as const,
     peso_kg: 18000,
+    pin_pendiente: false,
   },
 ];
 
@@ -153,6 +154,23 @@ describe("MapaPage", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Ubicación ya ocupada");
     expect(obtenerMapaPatio).toHaveBeenCalledTimes(2);
+  });
+
+  it("avisa cuando el contenedor tiene PIN pendiente y no pide sugerencia", async () => {
+    vi.mocked(listarContenedores).mockResolvedValue([
+      { ...PENDIENTES[0], estado: "solicitud_ingreso" as const, pin_pendiente: true },
+    ]);
+    const user = userEvent.setup();
+    render(<MapaPage />);
+
+    await user.click(await screen.findByRole("button", { name: /MSCU1234567/ }));
+
+    expect(sugerirUbicacion).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText(
+        "Este contenedor tiene un PIN pendiente de verificación en portería."
+      )
+    ).toBeVisible();
   });
 
   it("avisa cuando el patio no tiene punto de entrada y no pide sugerencia", async () => {

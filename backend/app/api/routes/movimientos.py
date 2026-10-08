@@ -6,7 +6,7 @@ from app.api.deps import CurrentUser, require_roles
 from app.core.auditoria import registrar_auditoria
 from app.db import get_db
 from app.models.contenedor import Contenedor, Movimiento
-from app.models.enums import EstadoContenedor, RolUsuario
+from app.models.enums import EstadoContenedor, RolUsuario, TipoMovimiento
 from app.models.ubicacion import Ubicacion
 from app.schemas.ubicacion import MovimientoCreate, MovimientoOut
 
@@ -39,6 +39,16 @@ async def registrar_movimiento(
     contenedor = contenedor_result.scalar_one_or_none()
     if contenedor is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Contenedor no encontrado")
+
+    pin_pendiente = (
+        contenedor.estado == EstadoContenedor.SOLICITUD_INGRESO
+        and contenedor.pin_confirmacion is not None
+    )
+    if payload.tipo == TipoMovimiento.INGRESO and pin_pendiente:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Este contenedor tiene un PIN pendiente de verificación en portería",
+        )
 
     origen_id = contenedor.ubicacion_id
     contenedor.ubicacion_id = payload.ubicacion_destino_id

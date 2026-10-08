@@ -8,9 +8,16 @@ from app.api.deps import CurrentUser, get_current_user, require_roles
 from app.core.auditoria import registrar_auditoria
 from app.db import get_db
 from app.models.enums import RolUsuario
-from app.models.ubicacion import Patio
+from app.models.ubicacion import Carril, Patio, Tira, Tramo, Ubicacion
 from app.schemas.mapa import MapaPatioOut
-from app.schemas.patio import LayoutPatioCreate, LayoutPatioOut, PatioCreate, PatioOut, PatioUpdate
+from app.schemas.patio import (
+    LayoutPatioCreate,
+    LayoutPatioOut,
+    PatioCreate,
+    PatioEntradaUpdate,
+    PatioOut,
+    PatioUpdate,
+)
 from app.services.mapa_patio import obtener_mapa
 from app.services.patio_layout import sembrar_layout_uniforme
 
@@ -85,6 +92,55 @@ async def actualizar_patio(
         entidad_id=str(patio.id),
         valor_anterior={"anticipacion_minima_horas": valor_anterior},
         valor_nuevo={"anticipacion_minima_horas": patio.anticipacion_minima_horas},
+        patio_id=patio.id,
+    )
+    await db.commit()
+    await db.refresh(patio)
+    return patio
+
+
+@router.patch("/{patio_id}/entrada", response_model=PatioOut)
+async def fijar_entrada_patio(
+    patio_id: uuid.UUID,
+    payload: PatioEntradaUpdate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(require_roles(RolUsuario.ADMIN)),
+) -> Patio:
+    result = await db.execute(select(Patio).where(Patio.id == patio_id))
+    patio = result.scalar_one_or_none()
+    if patio is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Patio no encontrado")
+
+    ubicacion_result = await db.execute(
+        select(Ubicacion)
+        .join(Tira, Tira.id == Ubicacion.tira_id)
+        .join(Tramo, Tramo.id == Tira.tramo_id)
+        .join(Carril, Carril.id == Tramo.carril_id)
+        .where(Carril.patio_id == patio_id, Ubicacion.codigo == payload.codigo)
+    )
+    ubicacion = ubicacion_result.scalars().first()
+    if ubicacion is None:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND, "Ubicacion de entrada no encontrada en este patio"
+        )
+
+    valor_anterior = patio.ubicacion_entrada_id
+    patio.ubicacion_entrada_id = ubicacion.id
+
+    await registrar_auditoria(
+        db,
+        usuario_id=user.id,
+        rol=user.rol.value,
+        ip=request.client.host if request.client else "desconocida",
+        dispositivo=request.headers.get("user-agent", "desconocido"),
+        accion="fijar_entrada",
+        entidad="patios",
+        entidad_id=str(patio.id),
+        valor_anterior={
+            "ubicacion_entrada_id": str(valor_anterior) if valor_anterior else None
+        },
+        valor_nuevo={"ubicacion_entrada_id": str(ubicacion.id), "codigo": ubicacion.codigo},
         patio_id=patio.id,
     )
     await db.commit()

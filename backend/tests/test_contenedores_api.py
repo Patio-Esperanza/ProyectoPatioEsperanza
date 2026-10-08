@@ -5,7 +5,7 @@ from sqlalchemy import select
 
 from app.core.security import create_access_token
 from app.models.contenedor import Contenedor
-from app.models.enums import RolUsuario
+from app.models.enums import EstadoContenedor, RolUsuario
 from app.models.usuario import Usuario
 
 
@@ -293,6 +293,56 @@ async def test_admin_ve_pin(client, db_session, enviados_pin):
 
     assert response.status_code == 200
     assert len(response.json()["pin_confirmacion"]) == 4
+
+
+@pytest.mark.anyio
+async def test_contenedor_expone_pin_pendiente(client, db_session, enviados_pin):
+    await _crear_usuario_autenticado(db_session)
+    admin_token = _token(RolUsuario.ADMIN)
+    contenedor_id, _ = await _crear_solicitud_con_pin(
+        client, db_session, "00000000-0000-0000-0000-000000000002", "CCC040404CC4", "CSQU3053849"
+    )
+
+    antes = await client.get(
+        f"/api/contenedores/{contenedor_id}",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert antes.status_code == 200
+    assert antes.json()["pin_pendiente"] is True
+
+    result = await db_session.execute(
+        select(Contenedor).where(Contenedor.id == uuid.UUID(contenedor_id))
+    )
+    pin = result.scalar_one().pin_confirmacion
+    verificado = await client.post(
+        "/api/contenedores/verificar-pin",
+        json={"numero_contenedor": "CSQU3053849", "pin": pin},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert verificado.status_code == 200
+    assert verificado.json()["pin_pendiente"] is False
+
+
+@pytest.mark.anyio
+async def test_contenedor_de_operador_no_tiene_pin_pendiente(client, db_session):
+    await _crear_usuario_autenticado(db_session)
+    admin_token = _token(RolUsuario.ADMIN)
+    patio = await _crear_patio(db_session, "Patio PP", "PPIN")
+
+    response = await client.post(
+        "/api/contenedores",
+        json={
+            "numero_contenedor": "CSQU3054383",
+            "tipo": "lleno",
+            "tamano": "40",
+            "patio_id": str(patio.id),
+            "peso_kg": 18000,
+        },
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["pin_pendiente"] is False
 
 
 @pytest.mark.anyio
@@ -605,6 +655,21 @@ async def _ubicar_contenedor(client, db_session, contenedor_id: str, patio, sufi
         )
         await db_session.commit()
     admin_token = create_access_token(admin_id, "admin", [], 60)
+
+    pendiente = await db_session.execute(
+        sa_select(Contenedor).where(Contenedor.id == uuid.UUID(contenedor_id))
+    )
+    contenedor = pendiente.scalar_one()
+    if contenedor.estado == EstadoContenedor.SOLICITUD_INGRESO and contenedor.pin_confirmacion:
+        verificacion = await client.post(
+            "/api/contenedores/verificar-pin",
+            json={
+                "numero_contenedor": contenedor.numero_contenedor,
+                "pin": contenedor.pin_confirmacion,
+            },
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert verificacion.status_code == 200
 
     mov = await client.post(
         "/api/movimientos",

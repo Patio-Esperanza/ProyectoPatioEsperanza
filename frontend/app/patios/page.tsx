@@ -9,6 +9,7 @@ import {
   actualizarPatio,
   configurarLayoutPatio,
   createPatio,
+  fijarEntradaPatio,
   listPatios,
   type LayoutPatioResultado,
   type Patio,
@@ -33,6 +34,7 @@ function PatiosContent() {
   const [nombre, setNombre] = useState("");
   const [codigo, setCodigo] = useState("");
   const [creating, setCreating] = useState(false);
+  const [entradas, setEntradas] = useState<Record<string, string>>({});
   const [layoutAbierto, setLayoutAbierto] = useState<string | null>(null);
   const [layoutValores, setLayoutValores] = useState({
     carriles: "",
@@ -91,6 +93,16 @@ function PatiosContent() {
     }
   }
 
+  async function handleFijarEntrada(patioId: string) {
+    if (!token) return;
+    try {
+      await fijarEntradaPatio(token, patioId, entradas[patioId] ?? "");
+      await cargarPatios();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "No se pudo fijar el punto de entrada");
+    }
+  }
+
   function abrirLayout(patioId: string) {
     setLayoutAbierto(patioId);
     setLayoutValores({ carriles: "", tramos: "", tiras: "", niveles: "" });
@@ -144,6 +156,7 @@ function PatiosContent() {
     ...(esAdmin
       ? [
           { key: "anticipacion", header: "Anticipación mínima (h)", align: "end" as const },
+          { key: "entrada", header: "Punto de entrada", align: "end" as const },
           { key: "layout", header: "Layout", align: "end" as const },
         ]
       : []),
@@ -152,6 +165,27 @@ function PatiosContent() {
   function renderCelda(patio: Patio, key: string) {
     if (key === "codigo") return patio.codigo;
     if (key === "nombre") return patio.nombre;
+    if (key === "entrada") {
+      return (
+        <div className={styles.formularioLayout}>
+          <span>{patio.ubicacion_entrada_id === null ? "Sin punto de entrada" : "Configurado"}</span>
+          <Field
+            label={`Punto de entrada — ${patio.codigo}`}
+            labelHidden
+            id={`entrada-${patio.id}`}
+            type="text"
+            placeholder="A01-T01-R01-N1"
+            value={entradas[patio.id] ?? ""}
+            onChange={(e) => setEntradas((actual) => ({ ...actual, [patio.id]: e.target.value }))}
+          />
+          <div className={styles.accionesLayout}>
+            <Button variant="secondary" size="sm" onClick={() => handleFijarEntrada(patio.id)}>
+              Guardar entrada
+            </Button>
+          </div>
+        </div>
+      );
+    }
     if (key === "layout") {
       if (layoutAbierto !== patio.id) {
         return (

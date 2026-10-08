@@ -54,6 +54,7 @@ describe("MisContenedoresPage", () => {
         tamano: "40",
         patio_id: "p1",
         estado: "ubicado",
+        pin_pendiente: false,
         peso_kg: 18000,
       },
       {
@@ -63,11 +64,12 @@ describe("MisContenedoresPage", () => {
         tamano: "20",
         patio_id: "p1",
         estado: "solicitud_ingreso",
+        pin_pendiente: true,
         peso_kg: 12000,
       },
     ]);
     vi.mocked(listPatios).mockResolvedValue([
-      { id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 24 },
+      { id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 24, ubicacion_entrada_id: null },
     ]);
 
     render(<MisContenedoresPage />);
@@ -89,6 +91,7 @@ describe("MisContenedoresPage", () => {
         tamano: "40",
         patio_id: "p1",
         estado: "ubicado",
+        pin_pendiente: false,
         peso_kg: 18000,
       },
     ]);
@@ -100,11 +103,12 @@ describe("MisContenedoresPage", () => {
         tamano: "40",
         patio_id: "p1",
         estado: "solicitud_salida",
+        pin_pendiente: false,
         peso_kg: 18000,
       },
     ]);
     vi.mocked(listPatios).mockResolvedValue([
-      { id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 24 },
+      { id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 24, ubicacion_entrada_id: null },
     ]);
     vi.mocked(solicitarSalida).mockResolvedValue({
       id: "c1",
@@ -113,6 +117,7 @@ describe("MisContenedoresPage", () => {
       tamano: "40",
       patio_id: "p1",
       estado: "solicitud_salida",
+      pin_pendiente: false,
       peso_kg: 18000,
     });
 

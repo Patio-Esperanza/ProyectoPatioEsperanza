@@ -27,6 +27,7 @@ import {
   listarContenedores,
   solicitarSalida,
   actualizarPatio,
+  fijarEntradaPatio,
   obtenerPreviewReporte,
   descargarReporteExcel,
   listarReportesProgramados,
@@ -87,7 +88,7 @@ describe("login", () => {
 
 describe("listPatios", () => {
   it("sends the bearer token and returns the list", async () => {
-    const patios: Patio[] = [{ id: "1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 24 }];
+    const patios: Patio[] = [{ id: "1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 24, ubicacion_entrada_id: null }];
     fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => patios });
 
     const result = await listPatios("token-123");
@@ -101,7 +102,7 @@ describe("listPatios", () => {
 
 describe("createPatio", () => {
   it("posts the payload as JSON with the bearer token", async () => {
-    const creado: Patio = { id: "2", nombre: "Patio Sur", codigo: "PS", activo: true, anticipacion_minima_horas: 24 };
+    const creado: Patio = { id: "2", nombre: "Patio Sur", codigo: "PS", activo: true, anticipacion_minima_horas: 24, ubicacion_entrada_id: null };
     fetchMock.mockResolvedValue({ ok: true, status: 201, json: async () => creado });
 
     const result = await createPatio("token-123", { nombre: "Patio Sur", codigo: "PS" });
@@ -122,6 +123,7 @@ const CONTENEDOR: Contenedor = {
   tamano: "40",
   patio_id: "p1",
   estado: "solicitud_ingreso",
+  pin_pendiente: true,
   peso_kg: 18000,
 };
 
@@ -209,7 +211,7 @@ const USUARIO: Usuario = {
   email: "juan@patio.mx",
   tipo: "operador",
   activo: true,
-  patios: [{ id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 24 }],
+  patios: [{ id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 24, ubicacion_entrada_id: null }],
 };
 
 describe("listUsuarios", () => {
@@ -443,7 +445,7 @@ describe("solicitarSalida", () => {
 describe("actualizarPatio", () => {
   it("patches anticipacion_minima_horas", async () => {
     fetchMock.mockResolvedValueOnce(
-      jsonResponse({ id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 48 })
+      jsonResponse({ id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 48, ubicacion_entrada_id: null })
     );
 
     const result = await actualizarPatio("token", "p1", 48);
@@ -720,5 +722,20 @@ describe("ejecutarReporteProgramadoManual", () => {
       "http://localhost:8000/api/reportes/programados/rp1/ejecutar",
       expect.objectContaining({ method: "POST" })
     );
+  });
+});
+
+
+describe("fijarEntradaPatio", () => {
+  it("patches the entry code with the bearer token", async () => {
+    const patio = { id: "p1", ubicacion_entrada_id: "u1" };
+    fetchMock.mockResolvedValue(jsonResponse(patio));
+
+    expect(await fijarEntradaPatio("token-123", "p1", "A01-T01-R01-N1")).toEqual(patio);
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toBe("http://localhost:8000/api/patios/p1/entrada");
+    expect(options.method).toBe("PATCH");
+    expect(options.headers.Authorization).toBe("Bearer token-123");
+    expect(options.body).toBe(JSON.stringify({ codigo: "A01-T01-R01-N1" }));
   });
 });

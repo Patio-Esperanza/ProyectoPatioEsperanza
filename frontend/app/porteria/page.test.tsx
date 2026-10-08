@@ -46,6 +46,7 @@ describe("PorteriaPage", () => {
       tamano: "40",
       patio_id: "p1",
       estado: "en_porteria",
+      pin_pendiente: false,
       peso_kg: 18000,
     });
 

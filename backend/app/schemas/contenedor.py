@@ -1,7 +1,7 @@
 import datetime
 import uuid
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
 from app.core.iso6346 import validar_iso6346
 from app.models.enums import EstadoContenedor, TamanoContenedor, TipoContenedor
@@ -54,6 +54,12 @@ class ContenedorOut(BaseModel):
         default=None, validation_alias="fecha_estimada_salida"
     )
     fecha_deseada_salida: datetime.datetime | None = None
+    pin_confirmacion: str | None = Field(default=None, exclude=True)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def pin_pendiente(self) -> bool:
+        return self.estado == EstadoContenedor.SOLICITUD_INGRESO and self.pin_confirmacion is not None
 
 
 class PinOut(BaseModel):

@@ -46,6 +46,7 @@ describe("SolicitarPage", () => {
       tamano: "40",
       patio_id: "p1",
       estado: "solicitud_ingreso",
+      pin_pendiente: true,
       peso_kg: 18000,
       fecha_estimada_retiro: "2026-10-01T00:00:00+00:00",
     });

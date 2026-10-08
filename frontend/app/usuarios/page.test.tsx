@@ -23,8 +23,8 @@ function mockAuth(rol: string, patios: string[] = []) {
 }
 
 const PATIOS = [
-  { id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 24 },
-  { id: "p2", nombre: "Patio Sur", codigo: "PS", activo: true, anticipacion_minima_horas: 24 },
+  { id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 24, ubicacion_entrada_id: null },
+  { id: "p2", nombre: "Patio Sur", codigo: "PS", activo: true, anticipacion_minima_horas: 24, ubicacion_entrada_id: null },
 ];
 
 beforeEach(() => {
@@ -55,7 +55,7 @@ describe("UsuariosPage", () => {
         email: "juan@patio.mx",
         tipo: "operador",
         activo: true,
-        patios: [{ id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 24 }],
+        patios: [{ id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 24, ubicacion_entrada_id: null }],
       },
     ]);
 
@@ -75,7 +75,7 @@ describe("UsuariosPage", () => {
           email: "ana@patio.mx",
           tipo: "supervisor",
           activo: true,
-          patios: [{ id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 24 }],
+          patios: [{ id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 24, ubicacion_entrada_id: null }],
         },
       ]);
     vi.mocked(createUsuario).mockResolvedValue({
@@ -84,7 +84,7 @@ describe("UsuariosPage", () => {
       email: "ana@patio.mx",
       tipo: "supervisor",
       activo: true,
-      patios: [{ id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 24 }],
+      patios: [{ id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 24, ubicacion_entrada_id: null }],
     });
 
     const user = userEvent.setup();

@@ -13,8 +13,8 @@ vi.mock("@/lib/api", async (importOriginal) => {
 });
 
 const PATIOS = [
-  { id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 24 },
-  { id: "p2", nombre: "Patio Sur", codigo: "PS", activo: true, anticipacion_minima_horas: 24 },
+  { id: "p1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 24, ubicacion_entrada_id: null },
+  { id: "p2", nombre: "Patio Sur", codigo: "PS", activo: true, anticipacion_minima_horas: 24, ubicacion_entrada_id: null },
 ];
 
 beforeEach(() => {
@@ -39,6 +39,7 @@ describe("ContenedoresPage", () => {
       tamano: "40",
       patio_id: "p1",
       estado: "solicitud_ingreso",
+      pin_pendiente: true,
       peso_kg: 18000,
     });
 

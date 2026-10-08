@@ -80,6 +80,7 @@ export interface Patio {
   codigo: string;
   activo: boolean;
   anticipacion_minima_horas: number;
+  ubicacion_entrada_id: string | null;
 }
 
 export async function listPatios(token: string): Promise<Patio[]> {
@@ -95,6 +96,18 @@ export async function actualizarPatio(
     method: "PATCH",
     token,
     body: JSON.stringify({ anticipacion_minima_horas }),
+  });
+}
+
+export async function fijarEntradaPatio(
+  token: string,
+  patioId: string,
+  codigo: string
+): Promise<Patio> {
+  return request<Patio>(`/api/patios/${patioId}/entrada`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify({ codigo }),
   });
 }
 
@@ -158,6 +171,7 @@ export interface Contenedor {
   patio_id: string;
   estado: EstadoContenedor;
   peso_kg: number;
+  pin_pendiente: boolean;
   fecha_estimada_retiro?: string | null;
   fecha_deseada_salida?: string | null;
 }

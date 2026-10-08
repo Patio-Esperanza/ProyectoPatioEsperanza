@@ -3,13 +3,13 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import PatiosPage from "./page";
 import { useAuth } from "@/lib/auth-context";
-import { listPatios, createPatio, actualizarPatio } from "@/lib/api";
+import { listPatios, createPatio, actualizarPatio, fijarEntradaPatio } from "@/lib/api";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn(), push: vi.fn() }) }));
 vi.mock("@/lib/auth-context", () => ({ useAuth: vi.fn() }));
 vi.mock("@/lib/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api")>();
-  return { ...actual, listPatios: vi.fn(), createPatio: vi.fn(), actualizarPatio: vi.fn() };
+  return { ...actual, listPatios: vi.fn(), createPatio: vi.fn(), actualizarPatio: vi.fn(), fijarEntradaPatio: vi.fn() };
 });
 
 function mockAuth(rol: string) {
@@ -26,13 +26,14 @@ beforeEach(() => {
   vi.mocked(listPatios).mockReset();
   vi.mocked(createPatio).mockReset();
   vi.mocked(actualizarPatio).mockReset();
+  vi.mocked(fijarEntradaPatio).mockReset();
 });
 
 describe("PatiosPage", () => {
   it("lists the patios returned by the backend", async () => {
     mockAuth("operador");
     vi.mocked(listPatios).mockResolvedValue([
-      { id: "1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 24 },
+      { id: "1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 24, ubicacion_entrada_id: null },
     ]);
 
     render(<PatiosPage />);
@@ -54,13 +55,13 @@ describe("PatiosPage", () => {
     mockAuth("admin");
     vi.mocked(listPatios)
       .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ id: "2", nombre: "Patio Sur", codigo: "PS", activo: true, anticipacion_minima_horas: 24 }]);
+      .mockResolvedValueOnce([{ id: "2", nombre: "Patio Sur", codigo: "PS", activo: true, anticipacion_minima_horas: 24, ubicacion_entrada_id: null }]);
     vi.mocked(createPatio).mockResolvedValue({
       id: "2",
       nombre: "Patio Sur",
       codigo: "PS",
       activo: true,
-      anticipacion_minima_horas: 24,
+      anticipacion_minima_horas: 24, ubicacion_entrada_id: null,
     });
 
     const user = userEvent.setup();
@@ -77,14 +78,14 @@ describe("PatiosPage", () => {
   it("lets an admin update the anticipacion minima of a patio", async () => {
     mockAuth("admin");
     vi.mocked(listPatios).mockResolvedValue([
-      { id: "1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 24 },
+      { id: "1", nombre: "Patio Norte", codigo: "PN", activo: true, anticipacion_minima_horas: 24, ubicacion_entrada_id: null },
     ]);
     vi.mocked(actualizarPatio).mockResolvedValue({
       id: "1",
       nombre: "Patio Norte",
       codigo: "PN",
       activo: true,
-      anticipacion_minima_horas: 48,
+      anticipacion_minima_horas: 48, ubicacion_entrada_id: null,
     });
 
     const user = userEvent.setup();
@@ -96,5 +97,32 @@ describe("PatiosPage", () => {
     await user.tab();
 
     expect(actualizarPatio).toHaveBeenCalledWith("token", "1", 48);
+  });
+
+  it("lets an admin save the entry code and refreshes the patios", async () => {
+    mockAuth("admin");
+    const patio = {
+      id: "1",
+      nombre: "Patio Norte",
+      codigo: "PN",
+      activo: true,
+      anticipacion_minima_horas: 24,
+      ubicacion_entrada_id: null,
+    };
+    vi.mocked(listPatios)
+      .mockResolvedValueOnce([patio])
+      .mockResolvedValueOnce([{ ...patio, ubicacion_entrada_id: "u1" }]);
+    vi.mocked(fijarEntradaPatio).mockResolvedValue({ ...patio, ubicacion_entrada_id: "u1" });
+
+    const user = userEvent.setup();
+    render(<PatiosPage />);
+
+    expect(await screen.findByText("Sin punto de entrada")).toBeInTheDocument();
+    await user.type(screen.getByPlaceholderText("A01-T01-R01-N1"), "A01-T01-R01-N1");
+    await user.click(screen.getByRole("button", { name: "Guardar entrada" }));
+
+    expect(fijarEntradaPatio).toHaveBeenCalledWith("token", "1", "A01-T01-R01-N1");
+    expect(await screen.findByText("Configurado")).toBeInTheDocument();
+    expect(listPatios).toHaveBeenCalledTimes(2);
   });
 });

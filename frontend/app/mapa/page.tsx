@@ -26,6 +26,8 @@ import styles from "./page.module.css";
 const SIN_ENTRADA =
   "Este patio no tiene punto de entrada, así que no se puede sugerir una ubicación.";
 
+const PIN_PENDIENTE = "Este contenedor tiene un PIN pendiente de verificación en portería.";
+
 function MapaContent() {
   const { token } = useAuth();
   const [patioId, setPatioId] = useState("");
@@ -78,6 +80,10 @@ function MapaContent() {
     setAviso(null);
     setSugerencia(null);
     if (!token || !mapa) return;
+    if (pendientes.find((contenedor) => contenedor.id === id)?.pin_pendiente) {
+      setAviso(PIN_PENDIENTE);
+      return;
+    }
     if (!mapa.ubicacion_entrada_id) {
       setAviso(SIN_ENTRADA);
       return;

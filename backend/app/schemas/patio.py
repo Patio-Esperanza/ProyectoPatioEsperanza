@@ -13,6 +13,10 @@ class PatioUpdate(BaseModel):
     anticipacion_minima_horas: int = Field(gt=0)
 
 
+class PatioEntradaUpdate(BaseModel):
+    codigo: str = Field(min_length=1)
+
+
 class PatioOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

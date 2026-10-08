@@ -46,6 +46,7 @@ describe("ContenedorDetallePage", () => {
       tamano: "40",
       patio_id: "p1",
       estado: "ubicado",
+      pin_pendiente: false,
       peso_kg: 18000,
     });
 
@@ -73,6 +74,7 @@ describe("ContenedorDetallePage", () => {
       tamano: "40",
       patio_id: "p1",
       estado: "solicitud_ingreso",
+      pin_pendiente: true,
       peso_kg: 18000,
     });
     vi.mocked(obtenerPin).mockResolvedValue({ pin_confirmacion: "4821" });
@@ -96,6 +98,7 @@ describe("ContenedorDetallePage", () => {
       tamano: "40",
       patio_id: "p1",
       estado: "solicitud_ingreso",
+      pin_pendiente: true,
       peso_kg: 18000,
     });
 

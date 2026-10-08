@@ -90,6 +90,79 @@ async def test_registrar_movimiento_ubica_contenedor(client, db_session):
 
 
 @pytest.mark.anyio
+async def test_no_permite_ingreso_con_pin_pendiente(client, db_session):
+    from sqlalchemy import select
+
+    from app.models.contenedor import Contenedor
+    from app.models.ubicacion import Carril, Tira, Tramo, Ubicacion
+
+    await _crear_usuario_autenticado(db_session)
+    admin_token = _token(RolUsuario.ADMIN)
+    patio = await _crear_patio_carril_tramo_tira_ubicacion(client, admin_token, "M3")
+
+    carril = Carril(patio_id=patio["id"], codigo="A1", orden=0)
+    db_session.add(carril)
+    await db_session.flush()
+    tramo = Tramo(carril_id=carril.id, codigo="T1", orden=0)
+    db_session.add(tramo)
+    await db_session.flush()
+    tira = Tira(tramo_id=tramo.id, codigo="S1", orden=0)
+    db_session.add(tira)
+    await db_session.flush()
+    ubicacion = Ubicacion(tira_id=tira.id, nivel=1, codigo="A1-T1-S1-N1")
+    db_session.add(ubicacion)
+    await db_session.commit()
+
+    op_token = _token(RolUsuario.OPERADOR, patios=[patio["id"]])
+    contenedor_resp = await client.post(
+        "/api/contenedores",
+        json={
+            "numero_contenedor": "CSQU3054383",
+            "tipo": "lleno",
+            "tamano": "40",
+            "patio_id": patio["id"],
+            "peso_kg": 18000,
+        },
+        headers={"Authorization": f"Bearer {op_token}"},
+    )
+    contenedor_id = contenedor_resp.json()["id"]
+
+    result = await db_session.execute(select(Contenedor).where(Contenedor.id == uuid.UUID(contenedor_id)))
+    contenedor = result.scalar_one()
+    contenedor.pin_confirmacion = "1234"
+    await db_session.commit()
+
+    bloqueado = await client.post(
+        "/api/movimientos",
+        json={
+            "contenedor_id": contenedor_id,
+            "ubicacion_destino_id": str(ubicacion.id),
+            "tipo": "ingreso",
+        },
+        headers={"Authorization": f"Bearer {op_token}"},
+    )
+    assert bloqueado.status_code == 409
+
+    verificado = await client.post(
+        "/api/contenedores/verificar-pin",
+        json={"numero_contenedor": "CSQU3054383", "pin": "1234"},
+        headers={"Authorization": f"Bearer {op_token}"},
+    )
+    assert verificado.status_code == 200
+
+    permitido = await client.post(
+        "/api/movimientos",
+        json={
+            "contenedor_id": contenedor_id,
+            "ubicacion_destino_id": str(ubicacion.id),
+            "tipo": "ingreso",
+        },
+        headers={"Authorization": f"Bearer {op_token}"},
+    )
+    assert permitido.status_code == 201
+
+
+@pytest.mark.anyio
 async def test_no_permite_mover_a_slot_ocupado(client, db_session):
     from app.models.ubicacion import Carril, Tira, Tramo, Ubicacion
 
