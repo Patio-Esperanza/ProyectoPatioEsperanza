@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from sqlalchemy import select
 
+from app.config import settings
 from app.models.cliente import Cliente
 from app.models.enums import TipoCliente
 from app.models.usuario import Usuario
@@ -47,6 +48,29 @@ async def test_registro_con_rfc_valido_crea_usuario_inactivo(client, db_session,
     assert usuario.activo is False
     assert usuario.cliente_id is not None
     assert usuario.codigo_verificacion is not None
+
+
+@pytest.mark.anyio
+async def test_el_correo_de_registro_usa_la_plantilla_de_marca(client, db_session, enviados):
+    await _crear_cliente_activo(db_session, "BBB010101BB1")
+
+    response = await client.post(
+        "/api/clientes/registro",
+        json={"nombre": "Juan", "email": "juan@empresa.mx", "password": "clave1234", "rfc": "BBB010101BB1"},
+    )
+    assert response.status_code == 201
+
+    result = await db_session.execute(select(Usuario).where(Usuario.email == "juan@empresa.mx"))
+    codigo = result.scalar_one().codigo_verificacion
+
+    _, _, html = enviados[0]
+    assert settings.logo_url in html
+    assert settings.contacto_telefono in html
+    assert codigo in html
+    assert (
+        f"{settings.app_base_url}/registro/verificar?email=juan%40empresa.mx&codigo={codigo}"
+        in html
+    )
 
 
 @pytest.mark.anyio

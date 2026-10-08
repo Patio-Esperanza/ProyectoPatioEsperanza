@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser, require_roles
 from app.core.auditoria import registrar_auditoria
 from app.core.email import enviar_correo
+from app.core.email_templates import correo_codigo_verificacion
 from app.core.security import hash_password
 from app.db import get_db
 from app.models.cliente import Cliente
@@ -105,8 +106,12 @@ async def registrar_cliente(
         enviar_correo(
             payload.email,
             "Código de verificación — Patio Esperanza",
-            f"<p>Tu código de verificación es <strong>{codigo}</strong>. "
-            f"Expira en {_CODIGO_EXPIRA_MINUTOS} minutos.</p>",
+            correo_codigo_verificacion(
+                nombre=payload.nombre,
+                email=payload.email,
+                codigo=codigo,
+                minutos=_CODIGO_EXPIRA_MINUTOS,
+            ),
         )
     except Exception as exc:
         raise HTTPException(
