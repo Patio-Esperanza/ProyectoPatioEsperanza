@@ -107,3 +107,41 @@ def correo_codigo_verificacion(
     return _plantilla_base(
         f"Tu código de verificación es {codigo}. Expira en {minutos} minutos.", contenido
     )
+
+
+def correo_pin_confirmacion(nombre: str | None, pin: str, numero_contenedor: str) -> str:
+    """Correo con el PIN que el cliente presenta en portería."""
+    saludo = escape(nombre) if nombre else "Estimado cliente"
+    contenedor = escape(numero_contenedor)
+    url_pase = f"{settings.app_base_url}/mis-contenedores"
+
+    contenido = f"""            <p style="margin:0 0 16px 0;font-size:16px;line-height:24px;">Hola, {saludo},</p>
+            <p style="margin:0 0 24px 0;font-size:15px;line-height:24px;color:{COLOR_TEXTO_SUAVE};">
+              Generaste un PIN de acceso para el contenedor
+              <strong style="color:{COLOR_TEXTO};">{contenedor}</strong>.
+              Presenta el siguiente código al operador en la entrada del patio:
+            </p>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td align="center" style="padding:8px 0 24px 0;">
+                  <div style="font-family:{FUENTE};font-size:52px;font-weight:bold;letter-spacing:10px;color:{COLOR_DORADO};">{pin}</div>
+                </td>
+              </tr>
+            </table>
+            <p style="margin:0 0 8px 0;font-size:15px;font-weight:bold;color:{COLOR_TEXTO};">Instrucciones importantes</p>
+            <ul style="margin:0 0 24px 0;padding-left:20px;font-size:15px;line-height:24px;color:{COLOR_TEXTO_SUAVE};">
+              <li style="margin-bottom:6px;">Este PIN es de uso personal e intransferible.</li>
+              <li style="margin-bottom:6px;">No lo compartas con nadie más.</li>
+              <li>Si no solicitaste este acceso, ignora este mensaje.</li>
+            </ul>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td align="center" style="padding:0 0 8px 0;">
+                  <a href="{url_pase}" style="display:inline-block;background-color:{COLOR_DORADO};color:#ffffff;font-family:{FUENTE};font-size:16px;font-weight:bold;text-decoration:none;padding:14px 32px;border-radius:6px;">Ver mi pase de acceso</a>
+                </td>
+              </tr>
+            </table>"""
+
+    return _plantilla_base(
+        f"Tu PIN de acceso para el contenedor {numero_contenedor} es {pin}.", contenido
+    )

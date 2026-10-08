@@ -246,6 +246,63 @@ async def test_solicitar_genera_pin_y_envia_correo(client, db_session, enviados_
     assert contenedor.pin_confirmacion in contenido
 
 
+@pytest.mark.anyio
+async def test_el_correo_del_pin_usa_la_plantilla_de_marca(client, db_session, enviados_pin):
+    from app.config import settings
+    from app.models.cliente import Cliente
+    from app.models.enums import TipoCliente
+
+    patio = await _crear_patio(db_session, "Patio Norte", "PN6")
+    cliente = Cliente(
+        razon_social="Importadora PIN2", rfc="CCC030303CC3", tipo=TipoCliente.IMPORTADOR_EXPORTADOR, activo=True
+    )
+    db_session.add(cliente)
+    await db_session.commit()
+    await db_session.refresh(cliente)
+    db_session.add(
+        Usuario(
+            id=uuid.UUID("00000000-0000-0000-0000-000000000006"),
+            tipo=RolUsuario.CLIENTE,
+            email="pin2-cliente@empresa.mx",
+            password_hash="hash",
+            cliente_id=cliente.id,
+            activo=True,
+        )
+    )
+    await db_session.commit()
+    token = create_access_token("00000000-0000-0000-0000-000000000006", "cliente", [], 60, cliente_id=str(cliente.id))
+
+    response = await client.post(
+        "/api/contenedores/solicitar",
+        json={
+            "numero_contenedor": "TRLU8844556",
+            "tipo": "lleno",
+            "tamano": "40",
+            "peso_kg": 18000,
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 201
+    assert len(enviados_pin) == 1
+
+    from sqlalchemy import select as sa_select
+
+    result = await db_session.execute(
+        sa_select(Contenedor).where(Contenedor.numero_contenedor == "TRLU8844556")
+    )
+    contenedor = result.scalar_one()
+    pin = contenedor.pin_confirmacion
+
+    _, _, html = enviados_pin[0]
+    assert settings.logo_url in html
+    assert settings.contacto_telefono in html
+    assert pin in html
+    assert "TRLU8844556" in html
+    assert "personal e intransferible" in html
+    assert f"{settings.app_base_url}/mis-contenedores" in html
+
+
 async def _crear_solicitud_con_pin(client, db_session, usuario_id: str, cliente_rfc: str, numero: str):
     from app.models.cliente import Cliente
     from app.models.enums import TipoCliente

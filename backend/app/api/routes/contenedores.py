@@ -10,6 +10,7 @@ from sqlalchemy.sql import func
 from app.api.deps import CurrentUser, get_current_user, require_roles
 from app.core.auditoria import registrar_auditoria
 from app.core.email import enviar_correo
+from app.core.email_templates import correo_pin_confirmacion
 from app.db import get_db
 from app.models.contenedor import Contenedor
 from app.models.enums import EstadoContenedor, RolUsuario
@@ -149,8 +150,11 @@ async def solicitar_contenedor(
         enviar_correo(
             usuario.email,
             "PIN de confirmación — Patio Esperanza",
-            f"<p>Tu PIN de confirmación es <strong>{pin}</strong>. "
-            f"Preséntalo al operador en la entrada del patio.</p>",
+            correo_pin_confirmacion(
+                nombre=usuario.nombre,
+                pin=pin,
+                numero_contenedor=contenedor.numero_contenedor,
+            ),
         )
     except Exception as exc:
         raise HTTPException(
