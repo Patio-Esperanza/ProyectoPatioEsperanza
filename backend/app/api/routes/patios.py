@@ -18,6 +18,7 @@ from app.schemas.patio import (
     PatioOut,
     PatioUpdate,
 )
+from app.services.codigo_ubicacion import normalizar_codigo_ubicacion
 from app.services.mapa_patio import obtener_mapa
 from app.services.patio_layout import sembrar_layout_uniforme
 
@@ -112,12 +113,19 @@ async def fijar_entrada_patio(
     if patio is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Patio no encontrado")
 
+    # El código se teclea a mano, así que `A1-T1-R1-N01` debe encontrar la
+    # misma ubicación que `A01-T01-R01-N1`, que es como está guardada.
+    try:
+        codigo = normalizar_codigo_ubicacion(payload.codigo)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
+
     ubicacion_result = await db.execute(
         select(Ubicacion)
         .join(Tira, Tira.id == Ubicacion.tira_id)
         .join(Tramo, Tramo.id == Tira.tramo_id)
         .join(Carril, Carril.id == Tramo.carril_id)
-        .where(Carril.patio_id == patio_id, Ubicacion.codigo == payload.codigo)
+        .where(Carril.patio_id == patio_id, Ubicacion.codigo == codigo)
     )
     ubicacion = ubicacion_result.scalars().first()
     if ubicacion is None:

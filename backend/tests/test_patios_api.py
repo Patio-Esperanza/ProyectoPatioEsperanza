@@ -300,17 +300,96 @@ async def test_admin_fija_entrada_por_codigo(client, db_session):
 
 
 @pytest.mark.anyio
+async def test_fijar_entrada_acepta_el_nivel_con_cero(client, db_session):
+    """El nivel se guarda sin cero (N1), pero el admin lo teclea con cero.
+
+    `A01-T01-R01-N01` describe la misma ubicación que `A01-T01-R01-N1`, así que
+    el endpoint normaliza el código en vez de responder 404.
+    """
+    await _crear_usuario_autenticado(db_session, RolUsuario.ADMIN)
+    token = _token(RolUsuario.ADMIN)
+    patio_id = await _crear_patio_con_layout(client, token, codigo="ENTD")
+    ubicacion = await _ubicacion_del_patio(db_session, patio_id, "A01-T01-R01-N1")
+
+    response = await client.patch(
+        f"/api/patios/{patio_id}/entrada", json={"codigo": "A01-T01-R01-N01"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["ubicacion_entrada_id"] == str(ubicacion.id)
+
+
+@pytest.mark.anyio
+async def test_fijar_entrada_acepta_segmentos_sin_cero_y_minusculas(client, db_session):
+    """Los segmentos de carril, tramo y tira sí llevan cero: A01, no A1.
+
+    El admin puede teclear cualquiera de las dos formas, en minúsculas y con
+    espacios alrededor.
+    """
+    await _crear_usuario_autenticado(db_session, RolUsuario.ADMIN)
+    token = _token(RolUsuario.ADMIN)
+    patio_id = await _crear_patio_con_layout(client, token, codigo="ENTE")
+    ubicacion = await _ubicacion_del_patio(db_session, patio_id, "A01-T01-R01-N1")
+
+    response = await client.patch(
+        f"/api/patios/{patio_id}/entrada", json={"codigo": "  a1-t1-r1-n1  "},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["ubicacion_entrada_id"] == str(ubicacion.id)
+
+
+@pytest.mark.anyio
+async def test_fijar_entrada_sin_nivel_pide_el_formato_completo(client, db_session):
+    """Sin nivel el código no identifica una ubicación.
+
+    El endpoint no puede adivinar el nivel, así que responde 422 y dice el
+    formato esperado en vez de un 404 que parece decir que el patio está vacío.
+    """
+    await _crear_usuario_autenticado(db_session, RolUsuario.ADMIN)
+    token = _token(RolUsuario.ADMIN)
+    patio_id = await _crear_patio_con_layout(client, token, codigo="ENTF")
+
+    response = await client.patch(
+        f"/api/patios/{patio_id}/entrada", json={"codigo": "A01-T01-R01"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 422
+    assert "A01-T01-R01-N1" in response.text
+
+
+@pytest.mark.anyio
 async def test_fijar_entrada_con_codigo_inexistente_404(client, db_session):
+    """Código bien formado que no existe en el patio: 404, no 422."""
     await _crear_usuario_autenticado(db_session, RolUsuario.ADMIN)
     token = _token(RolUsuario.ADMIN)
     patio_id = await _crear_patio_con_layout(client, token, codigo="ENTX")
+
+    response = await client.patch(
+        f"/api/patios/{patio_id}/entrada", json={"codigo": "A99-T99-R99-N9"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_fijar_entrada_con_codigo_malformado_422(client, db_session):
+    """Un código que no tiene la forma del layout no es un 404 de ubicación."""
+    await _crear_usuario_autenticado(db_session, RolUsuario.ADMIN)
+    token = _token(RolUsuario.ADMIN)
+    patio_id = await _crear_patio_con_layout(client, token, codigo="ENTY")
 
     response = await client.patch(
         f"/api/patios/{patio_id}/entrada", json={"codigo": "Z99-T99-R99-N9"},
         headers={"Authorization": f"Bearer {token}"},
     )
 
-    assert response.status_code == 404
+    assert response.status_code == 422
+    assert "A01-T01-R01-N1" in response.text
 
 
 @pytest.mark.anyio
