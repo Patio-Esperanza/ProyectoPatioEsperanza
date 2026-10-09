@@ -17,6 +17,10 @@ vi.mock("@/lib/api", async (importOriginal) => {
 
 function mockAuth(rol: string) {
   vi.mocked(useAuth).mockReturnValue({
+    tokenExpiresAt: null,
+    proximaExpiracion: false,
+    errorRefresh: false,
+    renovarSesion: vi.fn(),
     user: { id: "1", rol, patios: [] },
     token: "token",
     ready: true,
@@ -27,6 +31,10 @@ function mockAuth(rol: string) {
 
 beforeEach(() => {
   vi.mocked(useAuth).mockReturnValue({
+    tokenExpiresAt: null,
+    proximaExpiracion: false,
+    errorRefresh: false,
+    renovarSesion: vi.fn(),
     user: { id: "1", rol: "operador", patios: [] },
     token: "token",
     ready: true,

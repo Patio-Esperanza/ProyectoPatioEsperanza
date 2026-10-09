@@ -18,6 +18,10 @@ vi.mock("@/lib/auth-context", () => ({ useAuth: vi.fn() }));
 
 function mockSession(rol: string, logout = vi.fn()) {
   vi.mocked(useAuth).mockReturnValue({
+    tokenExpiresAt: null,
+    proximaExpiracion: false,
+    errorRefresh: false,
+    renovarSesion: vi.fn(),
     user: { id: "1", rol, patios: [] },
     token: "token",
     ready: true,
@@ -36,6 +40,10 @@ beforeEach(() => {
 describe("Sidebar", () => {
   it("renders nothing when there is no session", () => {
     vi.mocked(useAuth).mockReturnValue({
+      tokenExpiresAt: null,
+      proximaExpiracion: false,
+      errorRefresh: false,
+      renovarSesion: vi.fn(),
       user: null,
       token: null,
       ready: true,

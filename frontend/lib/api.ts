@@ -1,3 +1,5 @@
+import { decodeTokenSafe, tokenCaducado } from "./jwt";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export class ApiError extends Error {
@@ -8,6 +10,47 @@ export class ApiError extends Error {
     this.status = status;
     this.name = "ApiError";
   }
+}
+
+// El contexto de auth registra aquí cómo renovar la sesión. Vive en un módulo, no en el
+// árbol de React, porque `request()` lo llama desde cualquier capa sin pasar por un hook.
+let manejadorRefresh: (() => Promise<void>) | null = null;
+
+export function registrarManejadorRefresh(onNeedRefresh: () => Promise<void>): () => void {
+  manejadorRefresh = onNeedRefresh;
+  return () => {
+    if (manejadorRefresh === onNeedRefresh) manejadorRefresh = null;
+  };
+}
+
+/**
+ * Devuelve el token a usar en la petición. Si el que trae la llamada ya caducó, fuerza un
+ * refresh antes de salir, para que el usuario no reciba un 401 suelto a mitad de un
+ * formulario. Prefiere siempre el token recién guardado en localStorage sobre una copia
+ * vieja capturada en un render anterior.
+ */
+async function tokenParaPeticion(token?: string): Promise<string | undefined> {
+  if (!token || !manejadorRefresh) return token;
+  const payload = decodeTokenSafe(token);
+  const stored = localStorage.getItem("patio_esperanza_token");
+  const storedPayload = stored ? decodeTokenSafe(stored) : null;
+  if (
+    payload &&
+    stored &&
+    storedPayload &&
+    storedPayload.sub === payload.sub &&
+    storedPayload.iat >= payload.iat &&
+    !tokenCaducado(storedPayload)
+  ) {
+    return stored;
+  }
+  if (payload && tokenCaducado(payload)) {
+    await manejadorRefresh();
+    const nuevo = localStorage.getItem("patio_esperanza_token");
+    if (!nuevo) throw new ApiError(401, "La sesión ha caducado");
+    return nuevo;
+  }
+  return token;
 }
 
 function formatDetail(detail: unknown, fallback: string): string {
@@ -34,7 +77,10 @@ async function request<T>(
   path: string,
   options: RequestInit & { token?: string } = {}
 ): Promise<T> {
-  const { token, headers, body, ...rest } = options;
+  const { token: originalToken, headers, body, ...rest } = options;
+  // El propio refresh se exceptúa: si pasara por `tokenParaPeticion` se llamaría a sí mismo.
+  const token =
+    path === "/api/auth/refresh" ? originalToken : await tokenParaPeticion(originalToken);
   const isFormBody = body instanceof URLSearchParams;
 
   const response = await fetch(`${API_URL}${path}`, {
@@ -72,6 +118,14 @@ export interface TokenResponse {
 export async function login(username: string, password: string): Promise<TokenResponse> {
   const body = new URLSearchParams({ username, password });
   return request<TokenResponse>("/api/auth/login", { method: "POST", body });
+}
+
+export async function refreshToken(currentToken: string): Promise<string> {
+  const response = await request<TokenResponse>("/api/auth/refresh", {
+    method: "POST",
+    token: currentToken,
+  });
+  return response.access_token;
 }
 
 export interface Patio {
@@ -566,6 +620,8 @@ export async function descargarReporteExcel(
   filtros: FiltrosReportePayload | undefined,
   nombreArchivo: string
 ): Promise<void> {
+  // Esta descarga no pasa por `request()`, así que renueva el token por su cuenta.
+  token = (await tokenParaPeticion(token))!;
   const query = construirQueryReporte(filtros);
   const response = await fetch(`${API_URL}/api/reportes/${tipo}/exportar${query}`, {
     headers: { Authorization: `Bearer ${token}` },

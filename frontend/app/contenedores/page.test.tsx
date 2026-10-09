@@ -19,6 +19,10 @@ const PATIOS = [
 
 beforeEach(() => {
   vi.mocked(useAuth).mockReturnValue({
+    tokenExpiresAt: null,
+    proximaExpiracion: false,
+    errorRefresh: false,
+    renovarSesion: vi.fn(),
     user: { id: "1", rol: "operador", patios: ["p1", "p2"] },
     token: "token",
     ready: true,
@@ -85,6 +89,10 @@ describe("ContenedoresPage", () => {
 
   it("auto-selects and locks the patio when the user has only one assigned", async () => {
     vi.mocked(useAuth).mockReturnValue({
+      tokenExpiresAt: null,
+      proximaExpiracion: false,
+      errorRefresh: false,
+      renovarSesion: vi.fn(),
       user: { id: "1", rol: "operador", patios: ["p1"] },
       token: "token",
       ready: true,

@@ -19,6 +19,10 @@ beforeEach(() => {
 describe("HomePage", () => {
   it("redirects to /patios when authenticated", () => {
     vi.mocked(useAuth).mockReturnValue({
+      tokenExpiresAt: null,
+      proximaExpiracion: false,
+      errorRefresh: false,
+      renovarSesion: vi.fn(),
       user: { id: "1", rol: "admin", patios: [] },
       token: "t",
       ready: true,
@@ -33,6 +37,10 @@ describe("HomePage", () => {
 
   it("redirects to /login when not authenticated", () => {
     vi.mocked(useAuth).mockReturnValue({
+      tokenExpiresAt: null,
+      proximaExpiracion: false,
+      errorRefresh: false,
+      renovarSesion: vi.fn(),
       user: null,
       token: null,
       ready: true,
@@ -47,6 +55,10 @@ describe("HomePage", () => {
 
   it("does nothing while the session is not ready", () => {
     vi.mocked(useAuth).mockReturnValue({
+      tokenExpiresAt: null,
+      proximaExpiracion: false,
+      errorRefresh: false,
+      renovarSesion: vi.fn(),
       user: null,
       token: null,
       ready: false,

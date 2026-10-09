@@ -39,3 +39,9 @@ def create_access_token(
 
 def decode_access_token(token: str) -> dict:
     return jwt.decode(token, settings.jwt_secret, algorithms=[_ALGORITHM])
+
+
+def decode_token_allow_expired(token: str) -> dict:
+    return jwt.decode(
+        token, settings.jwt_secret, algorithms=[_ALGORITHM], options={"verify_exp": False}
+    )

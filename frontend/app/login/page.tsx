@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { login, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { tomarRutaRetorno } from "@/lib/ruta-retorno";
 import { Alert, Button, Field } from "@/components/ui";
 import styles from "./page.module.css";
 
@@ -39,7 +40,7 @@ export default function LoginPage() {
     try {
       const { access_token } = await login(email, password);
       setToken(access_token);
-      router.push("/patios");
+      router.push(tomarRutaRetorno() ?? "/patios");
     } catch (err) {
       setError(mensajeDeError(err));
     } finally {

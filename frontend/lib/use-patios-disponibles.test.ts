@@ -22,6 +22,10 @@ beforeEach(() => {
 describe("usePatiosDisponibles", () => {
   it("returns all patios for an admin", async () => {
     vi.mocked(useAuth).mockReturnValue({
+      tokenExpiresAt: null,
+      proximaExpiracion: false,
+      errorRefresh: false,
+      renovarSesion: vi.fn(),
       user: { id: "1", rol: "admin", patios: [] },
       token: "token",
       ready: true,
@@ -38,6 +42,10 @@ describe("usePatiosDisponibles", () => {
 
   it("filters to only the user's assigned patios for non-admin roles", async () => {
     vi.mocked(useAuth).mockReturnValue({
+      tokenExpiresAt: null,
+      proximaExpiracion: false,
+      errorRefresh: false,
+      renovarSesion: vi.fn(),
       user: { id: "1", rol: "operador", patios: ["p2"] },
       token: "token",
       ready: true,

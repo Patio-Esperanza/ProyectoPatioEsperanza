@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     database_url: str
     migrations_database_url: str
     jwt_secret: str
-    jwt_expires_minutes: int = 60
+    jwt_expires_minutes: int = 240
     cors_origins: str = "http://localhost:3000"
     sendgrid_api_key: str
     sendgrid_from_email: str

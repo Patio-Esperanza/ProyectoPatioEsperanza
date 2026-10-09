@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { AvisoSesionCaducada } from "./AvisoSesionCaducada";
 import { Sidebar } from "./Sidebar";
 import styles from "./AppShell.module.css";
 
@@ -25,6 +26,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div id="contenido" className={styles.contenido}>
         {children}
       </div>
+      <AvisoSesionCaducada />
     </div>
   );
 }

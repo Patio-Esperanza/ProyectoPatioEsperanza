@@ -19,6 +19,10 @@ beforeEach(() => {
 describe("AuthGuard", () => {
   it("renders children when there is a session", () => {
     vi.mocked(useAuth).mockReturnValue({
+      tokenExpiresAt: null,
+      proximaExpiracion: false,
+      errorRefresh: false,
+      renovarSesion: vi.fn(),
       user: { id: "1", rol: "admin", patios: [] },
       token: "token",
       ready: true,
@@ -38,6 +42,10 @@ describe("AuthGuard", () => {
 
   it("redirects to /login when there is no session", () => {
     vi.mocked(useAuth).mockReturnValue({
+      tokenExpiresAt: null,
+      proximaExpiracion: false,
+      errorRefresh: false,
+      renovarSesion: vi.fn(),
       user: null,
       token: null,
       ready: true,
@@ -57,6 +65,10 @@ describe("AuthGuard", () => {
 
   it("renders nothing while the session is not ready yet", () => {
     vi.mocked(useAuth).mockReturnValue({
+      tokenExpiresAt: null,
+      proximaExpiracion: false,
+      errorRefresh: false,
+      renovarSesion: vi.fn(),
       user: null,
       token: null,
       ready: false,
@@ -78,6 +90,10 @@ describe("AuthGuard", () => {
 describe("AuthGuard with a roles list", () => {
   function mockSession(rol: string) {
     vi.mocked(useAuth).mockReturnValue({
+      tokenExpiresAt: null,
+      proximaExpiracion: false,
+      errorRefresh: false,
+      renovarSesion: vi.fn(),
       user: { id: "1", rol, patios: [] },
       token: "token",
       ready: true,
@@ -127,6 +143,10 @@ describe("AuthGuard with a roles list", () => {
 
   it("still redirects to /login when there is no session at all", () => {
     vi.mocked(useAuth).mockReturnValue({
+      tokenExpiresAt: null,
+      proximaExpiracion: false,
+      errorRefresh: false,
+      renovarSesion: vi.fn(),
       user: null,
       token: null,
       ready: true,

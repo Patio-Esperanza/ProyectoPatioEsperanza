@@ -89,6 +89,10 @@ const PENDIENTES = [
 
 beforeEach(() => {
   vi.mocked(useAuth).mockReturnValue({
+    tokenExpiresAt: null,
+    proximaExpiracion: false,
+    errorRefresh: false,
+    renovarSesion: vi.fn(),
     user: { id: "1", rol: "operador", patios: ["p1"] },
     token: "token",
     ready: true,
