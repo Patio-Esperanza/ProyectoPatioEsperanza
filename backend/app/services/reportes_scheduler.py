@@ -7,6 +7,7 @@ from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import zona_horaria_app
 from app.core.email import enviar_correo_con_adjunto
 from app.db import SessionLocal
 from app.models.reporte_programado import ReporteProgramado
@@ -24,13 +25,14 @@ def _calcular_trigger(prog: ReporteProgramado) -> CronTrigger:
     frecuencia = prog.frecuencia
 
     if frecuencia == FrecuenciaReporte.DIARIO.value:
-        return CronTrigger(hour=prog.hora, minute=prog.minuto)
+        return CronTrigger(hour=prog.hora, minute=prog.minuto, timezone=zona_horaria_app())
 
     if frecuencia == FrecuenciaReporte.SEMANAL.value:
         return CronTrigger(
             day_of_week=prog.dia_semana or 0,
             hour=prog.hora,
             minute=prog.minuto,
+            timezone=zona_horaria_app(),
         )
 
     if frecuencia == FrecuenciaReporte.MENSUAL.value:
@@ -38,9 +40,10 @@ def _calcular_trigger(prog: ReporteProgramado) -> CronTrigger:
             day=prog.dia_mes or 1,
             hour=prog.hora,
             minute=prog.minuto,
+            timezone=zona_horaria_app(),
         )
 
-    return CronTrigger(hour=prog.hora, minute=prog.minuto)
+    return CronTrigger(hour=prog.hora, minute=prog.minuto, timezone=zona_horaria_app())
 
 
 def iniciar_scheduler() -> None:
@@ -48,7 +51,7 @@ def iniciar_scheduler() -> None:
     global scheduler
     if scheduler is not None:
         return
-    scheduler = AsyncIOScheduler()
+    scheduler = AsyncIOScheduler(timezone=zona_horaria_app())
     scheduler.start()
     logger.info("Scheduler iniciado")
 
@@ -150,7 +153,7 @@ async def ejecutar_envio_reporte_programado(
             subtitulo=subtitulo,
         )
 
-        ahora = datetime.datetime.now()
+        ahora = datetime.datetime.now(zona_horaria_app())
         nombre_archivo = f"{titulo.replace(' ', '_')}_{ahora.strftime('%Y%m%d_%H%M%S')}.xlsx"
 
         contenido_html = (

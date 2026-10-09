@@ -6,6 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, selectinload
 
+from app.config import zona_horaria_app
 from app.models.cliente import Cliente
 from app.models.contenedor import Contenedor, Movimiento
 from app.models.enums import (
@@ -111,7 +112,11 @@ TITULOS_POR_REPORTE: dict[ReporteTipo, tuple[str, str]] = {
 def _formatear_fecha(dt: datetime.datetime | None) -> str:
     if not dt:
         return ""
-    return dt.strftime("%d/%m/%Y %H:%M:%S")
+    # Ensure timezone aware: if naive, assume UTC; convert to app timezone for display
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=datetime.timezone.utc)
+    dt_app = dt.astimezone(zona_horaria_app())
+    return dt_app.strftime("%d/%m/%Y %H:%M:%S")
 
 
 def _fecha_ultimo_ingreso():
@@ -167,10 +172,10 @@ async def obtener_datos_contenedores_en_patio(
     # El rango de fechas filtra por entrada al patio, que es la fecha que
     # muestra la tabla, no por la fecha de registro.
     if filtros.fecha_inicio:
-        inicio_dt = datetime.datetime.combine(filtros.fecha_inicio, datetime.time.min, tzinfo=datetime.timezone.utc)
+        inicio_dt = datetime.datetime.combine(filtros.fecha_inicio, datetime.time.min, tzinfo=zona_horaria_app())
         stmt = stmt.where(fecha_entrada >= inicio_dt)
     if filtros.fecha_fin:
-        fin_dt = datetime.datetime.combine(filtros.fecha_fin, datetime.time.max, tzinfo=datetime.timezone.utc)
+        fin_dt = datetime.datetime.combine(filtros.fecha_fin, datetime.time.max, tzinfo=zona_horaria_app())
         stmt = stmt.where(fecha_entrada <= fin_dt)
     if filtros.busqueda:
         term = f"%{filtros.busqueda.strip()}%"
@@ -181,7 +186,7 @@ async def obtener_datos_contenedores_en_patio(
     items_all = res_all.all()
     total = len(items_all)
 
-    ahora = datetime.datetime.now(datetime.timezone.utc)
+    ahora = datetime.datetime.now(zona_horaria_app())
     llenos = 0
     vacios = 0
     dias_totales = 0
@@ -250,10 +255,10 @@ async def obtener_datos_movimientos_entrada(
     if filtros.cliente_id:
         stmt = stmt.where(Contenedor.cliente_id == filtros.cliente_id)
     if filtros.fecha_inicio:
-        inicio_dt = datetime.datetime.combine(filtros.fecha_inicio, datetime.time.min, tzinfo=datetime.timezone.utc)
+        inicio_dt = datetime.datetime.combine(filtros.fecha_inicio, datetime.time.min, tzinfo=zona_horaria_app())
         stmt = stmt.where(Movimiento.ts >= inicio_dt)
     if filtros.fecha_fin:
-        fin_dt = datetime.datetime.combine(filtros.fecha_fin, datetime.time.max, tzinfo=datetime.timezone.utc)
+        fin_dt = datetime.datetime.combine(filtros.fecha_fin, datetime.time.max, tzinfo=zona_horaria_app())
         stmt = stmt.where(Movimiento.ts <= fin_dt)
     if filtros.busqueda:
         term = f"%{filtros.busqueda.strip()}%"
@@ -336,10 +341,10 @@ async def obtener_datos_movimientos_salida(
     if filtros.cliente_id:
         stmt = stmt.where(Contenedor.cliente_id == filtros.cliente_id)
     if filtros.fecha_inicio:
-        inicio_dt = datetime.datetime.combine(filtros.fecha_inicio, datetime.time.min, tzinfo=datetime.timezone.utc)
+        inicio_dt = datetime.datetime.combine(filtros.fecha_inicio, datetime.time.min, tzinfo=zona_horaria_app())
         stmt = stmt.where(Movimiento.ts >= inicio_dt)
     if filtros.fecha_fin:
-        fin_dt = datetime.datetime.combine(filtros.fecha_fin, datetime.time.max, tzinfo=datetime.timezone.utc)
+        fin_dt = datetime.datetime.combine(filtros.fecha_fin, datetime.time.max, tzinfo=zona_horaria_app())
         stmt = stmt.where(Movimiento.ts <= fin_dt)
     if filtros.busqueda:
         term = f"%{filtros.busqueda.strip()}%"
@@ -420,10 +425,10 @@ async def obtener_datos_posiciones(
     # El rango de fechas filtra por entrada al patio, que es la fecha que
     # muestra la tabla, no por la fecha de registro.
     if filtros.fecha_inicio:
-        inicio_dt = datetime.datetime.combine(filtros.fecha_inicio, datetime.time.min, tzinfo=datetime.timezone.utc)
+        inicio_dt = datetime.datetime.combine(filtros.fecha_inicio, datetime.time.min, tzinfo=zona_horaria_app())
         stmt = stmt.where(fecha_entrada >= inicio_dt)
     if filtros.fecha_fin:
-        fin_dt = datetime.datetime.combine(filtros.fecha_fin, datetime.time.max, tzinfo=datetime.timezone.utc)
+        fin_dt = datetime.datetime.combine(filtros.fecha_fin, datetime.time.max, tzinfo=zona_horaria_app())
         stmt = stmt.where(fecha_entrada <= fin_dt)
     if filtros.busqueda:
         term = f"%{filtros.busqueda.strip()}%"
@@ -485,10 +490,10 @@ async def obtener_datos_servicios_especiales(
     if filtros.cliente_id:
         stmt = stmt.where(Contenedor.cliente_id == filtros.cliente_id)
     if filtros.fecha_inicio:
-        inicio_dt = datetime.datetime.combine(filtros.fecha_inicio, datetime.time.min, tzinfo=datetime.timezone.utc)
+        inicio_dt = datetime.datetime.combine(filtros.fecha_inicio, datetime.time.min, tzinfo=zona_horaria_app())
         stmt = stmt.where(Movimiento.ts >= inicio_dt)
     if filtros.fecha_fin:
-        fin_dt = datetime.datetime.combine(filtros.fecha_fin, datetime.time.max, tzinfo=datetime.timezone.utc)
+        fin_dt = datetime.datetime.combine(filtros.fecha_fin, datetime.time.max, tzinfo=zona_horaria_app())
         stmt = stmt.where(Movimiento.ts <= fin_dt)
     if filtros.busqueda:
         term = f"%{filtros.busqueda.strip()}%"

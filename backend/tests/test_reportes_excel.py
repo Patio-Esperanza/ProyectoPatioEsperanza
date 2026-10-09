@@ -1,4 +1,7 @@
+import datetime
 import io
+from unittest.mock import patch
+
 import openpyxl
 import pytest
 
@@ -72,6 +75,29 @@ def test_generar_excel_contenedores_en_patio():
     assert ws.row_dimensions[2].height == 22
     assert ws.row_dimensions[4].height == 26
     assert ws.row_dimensions[5].height == 20
+
+
+def test_fecha_de_emision_en_hora_de_mexico():
+    """La fila 2 mostraba UTC: decía 14:30 para un reporte emitido a las 08:30."""
+    # 2026-10-09 14:30 UTC son las 08:30 en México.
+    instante = datetime.datetime(2026, 10, 9, 14, 30, 0, tzinfo=datetime.timezone.utc)
+
+    class RelojFijo(datetime.datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return instante.astimezone(tz) if tz else instante.replace(tzinfo=None)
+
+    with patch("app.services.reportes_excel.datetime.datetime", RelojFijo):
+        buffer = generar_excel_reporte(
+            tipo=ReporteTipo.CONTAINERS_IN_YARD,
+            datos=[],
+            total_registros=0,
+            subtitulo="",
+        )
+
+    buffer.seek(0)
+    ws = openpyxl.load_workbook(buffer).active
+    assert "Fecha de Emisión: 09/10/2026 08:30:00" in ws["A2"].value
 
 
 def test_generar_excel_todos_los_tipos():

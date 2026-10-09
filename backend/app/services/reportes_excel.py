@@ -5,6 +5,7 @@ import openpyxl
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
+from app.config import zona_horaria_app
 from app.schemas.reportes import ReporteColumna, ReporteTipo
 from app.services.reportes_datos import COLUMNAS_POR_REPORTE, TITULOS_POR_REPORTE
 
@@ -86,7 +87,7 @@ def generar_excel_reporte(
         c.fill = fill_header
 
     # 2. Fila 2: Subtítulo y Metadatos
-    fecha_emision = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    fecha_emision = datetime.datetime.now(zona_horaria_app()).strftime("%d/%m/%Y %H:%M:%S")
     texto_meta = f"Fecha de Emisión: {fecha_emision} | Total de Registros: {num_total}"
     if sub:
         texto_meta += f" | {sub}"
