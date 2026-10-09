@@ -19,6 +19,7 @@ from app.models.usuario import Usuario
 from app.schemas.reportes import FiltrosReporte, ReporteTipo
 from app.services.reportes_datos import (
     COLUMNAS_POR_REPORTE,
+    _formatear_fecha,
     obtener_datos_reporte,
     obtener_preview_reporte,
 )
@@ -185,6 +186,99 @@ async def test_reporte_contenedores_en_patio(db_session: AsyncSession, datos_pru
 
 
 @pytest.mark.asyncio
+async def test_la_estadia_se_mide_desde_el_movimiento_de_ingreso(
+    db_session: AsyncSession, datos_prueba_reportes
+):
+    """La estadía cuenta días en el patio, no días desde que se registró el contenedor.
+
+    Un contenedor puede registrarse semanas antes de llegar físicamente, así que
+    `created_at` sobreestima la estadía. La fecha real de entrada es el `ts` del
+    primer movimiento de tipo `ingreso`.
+    """
+    ahora = datetime.datetime.now(datetime.timezone.utc)
+    patio = datos_prueba_reportes["patio"]
+
+    contenedor = Contenedor(
+        id=uuid.uuid4(),
+        numero_contenedor="HLXU1112223",
+        tipo=TipoContenedor.LLENO,
+        tamano=TamanoContenedor.CUARENTA,
+        cliente_id=datos_prueba_reportes["cliente"].id,
+        patio_id=patio.id,
+        ubicacion_id=None,
+        estado=EstadoContenedor.INGRESADO,
+        peso_kg=20000,
+        # Registrado hace 30 días, pero entró hace 3.
+        created_at=ahora - datetime.timedelta(days=30),
+    )
+    db_session.add(contenedor)
+    await db_session.flush()
+
+    db_session.add(
+        Movimiento(
+            id=uuid.uuid4(),
+            contenedor_id=contenedor.id,
+            patio_id=patio.id,
+            tipo=TipoMovimiento.INGRESO,
+            operador_id=datos_prueba_reportes["usuario"].id,
+            ts=ahora - datetime.timedelta(days=3),
+        )
+    )
+    await db_session.flush()
+
+    filtros = FiltrosReporte(page=1, page_size=25)
+    filas, _, _ = await obtener_datos_reporte(
+        db=db_session,
+        tipo=ReporteTipo.CONTAINERS_IN_YARD,
+        filtros=filtros,
+        patios_ids=[patio.id],
+    )
+
+    fila = next(f for f in filas if f["contenedor"] == "HLXU1112223")
+    assert fila["estadia"] == 3
+    assert fila["fecha_entrada"] == _formatear_fecha(ahora - datetime.timedelta(days=3))
+
+
+@pytest.mark.asyncio
+async def test_sin_movimiento_de_ingreso_la_estadia_es_cero(
+    db_session: AsyncSession, datos_prueba_reportes
+):
+    """Un contenedor sin movimiento de ingreso no ha entrado al patio.
+
+    Contar días desde `created_at` inventaría una estadía que nunca ocurrió.
+    """
+    ahora = datetime.datetime.now(datetime.timezone.utc)
+    patio = datos_prueba_reportes["patio"]
+
+    contenedor = Contenedor(
+        id=uuid.uuid4(),
+        numero_contenedor="HLXU4445556",
+        tipo=TipoContenedor.LLENO,
+        tamano=TamanoContenedor.CUARENTA,
+        cliente_id=datos_prueba_reportes["cliente"].id,
+        patio_id=patio.id,
+        ubicacion_id=None,
+        estado=EstadoContenedor.INGRESADO,
+        peso_kg=20000,
+        created_at=ahora - datetime.timedelta(days=30),
+    )
+    db_session.add(contenedor)
+    await db_session.flush()
+
+    filtros = FiltrosReporte(page=1, page_size=25)
+    filas, _, _ = await obtener_datos_reporte(
+        db=db_session,
+        tipo=ReporteTipo.CONTAINERS_IN_YARD,
+        filtros=filtros,
+        patios_ids=[patio.id],
+    )
+
+    fila = next(f for f in filas if f["contenedor"] == "HLXU4445556")
+    assert fila["estadia"] == 0
+    assert fila["fecha_entrada"] == ""
+
+
+@pytest.mark.asyncio
 async def test_reporte_movimientos_entrada(db_session: AsyncSession, datos_prueba_reportes):
     filtros = FiltrosReporte(page=1, page_size=25)
     filas, total, kpis = await obtener_datos_reporte(
@@ -212,6 +306,70 @@ async def test_reporte_movimientos_salida(db_session: AsyncSession, datos_prueba
     assert len(filas) >= 1
     assert filas[0]["contenedor"] == "MSKU1234567"
     assert filas[0]["estado"] == "Completado"
+
+
+@pytest.mark.asyncio
+async def test_la_salida_reporta_el_ingreso_previo_no_el_registro(
+    db_session: AsyncSession, datos_prueba_reportes
+):
+    """La fecha de entrada de una salida es el ingreso que la precede.
+
+    Si el contenedor entró, salió y volvió a entrar, cada salida debe mostrar
+    el ingreso con el que inició esa estadía, no la fecha de registro ni un
+    ingreso posterior.
+    """
+    ahora = datetime.datetime.now(datetime.timezone.utc)
+    patio = datos_prueba_reportes["patio"]
+    usuario = datos_prueba_reportes["usuario"]
+
+    contenedor = Contenedor(
+        id=uuid.uuid4(),
+        numero_contenedor="HLXU7778889",
+        tipo=TipoContenedor.LLENO,
+        tamano=TamanoContenedor.CUARENTA,
+        cliente_id=datos_prueba_reportes["cliente"].id,
+        patio_id=patio.id,
+        ubicacion_id=None,
+        estado=EstadoContenedor.DESPACHADO,
+        peso_kg=20000,
+        created_at=ahora - datetime.timedelta(days=30),
+    )
+    db_session.add(contenedor)
+    await db_session.flush()
+
+    entrada = ahora - datetime.timedelta(days=9)
+    salida = ahora - datetime.timedelta(days=7)
+    # Reingreso posterior a la salida: no debe aparecer en esa fila.
+    reingreso = ahora - datetime.timedelta(days=2)
+
+    for tipo, ts in (
+        (TipoMovimiento.INGRESO, entrada),
+        (TipoMovimiento.SALIDA, salida),
+        (TipoMovimiento.INGRESO, reingreso),
+    ):
+        db_session.add(
+            Movimiento(
+                id=uuid.uuid4(),
+                contenedor_id=contenedor.id,
+                patio_id=patio.id,
+                tipo=tipo,
+                operador_id=usuario.id,
+                ts=ts,
+            )
+        )
+    await db_session.flush()
+
+    filtros = FiltrosReporte(page=1, page_size=25)
+    filas, _, _ = await obtener_datos_reporte(
+        db=db_session,
+        tipo=ReporteTipo.DEPARTURE_MOVEMENTS,
+        filtros=filtros,
+        patios_ids=[patio.id],
+    )
+
+    fila = next(f for f in filas if f["contenedor"] == "HLXU7778889")
+    assert fila["fecha_entrada"] == _formatear_fecha(entrada)
+    assert fila["fecha_salida"] == _formatear_fecha(salida)
 
 
 @pytest.mark.asyncio

@@ -3,7 +3,8 @@ import uuid
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.contenedor import Contenedor
+from app.models.contenedor import Contenedor, Movimiento
+from app.models.enums import TipoMovimiento
 from app.models.ubicacion import Carril, Patio, Tira, Tramo, Ubicacion
 from app.schemas.mapa import (
     CarrilMapaOut,
@@ -132,15 +133,28 @@ async def obtener_detalle_tira(db: AsyncSession, tira_id: uuid.UUID) -> DetalleT
         return None
     carril_codigo, tramo_codigo, tira_codigo = fila_encabezado
 
+    # Fecha de entrada real al patio. `Contenedor.created_at` es la fecha de
+    # registro y un contenedor se puede registrar días antes de llegar, así que
+    # el badge de días en patio debe contar desde el último ingreso.
+    fecha_ingreso = (
+        select(func.max(Movimiento.ts))
+        .where(
+            Movimiento.contenedor_id == Contenedor.id,
+            Movimiento.tipo == TipoMovimiento.INGRESO,
+        )
+        .correlate(Contenedor)
+        .scalar_subquery()
+    )
+
     filas = await db.execute(
-        select(Ubicacion, Contenedor)
+        select(Ubicacion, Contenedor, fecha_ingreso)
         .outerjoin(Contenedor, Contenedor.ubicacion_id == Ubicacion.id)
         .where(Ubicacion.tira_id == tira_id)
         .order_by(Ubicacion.nivel)
     )
 
     niveles: list[NivelTiraOut] = []
-    for ubicacion, contenedor in filas:
+    for ubicacion, contenedor, entrada in filas:
         niveles.append(
             NivelTiraOut(
                 nivel=ubicacion.nivel,
@@ -158,7 +172,10 @@ async def obtener_detalle_tira(db: AsyncSession, tira_id: uuid.UUID) -> DetalleT
                         tamano=contenedor.tamano,
                         peso_kg=contenedor.peso_kg,
                         estado=contenedor.estado,
-                        fecha_ingreso=contenedor.created_at,
+                        # Sin movimiento de ingreso cae al registro: un
+                        # contenedor ubicado siempre debería tener ingreso, así
+                        # que esto solo cubre datos incompletos.
+                        fecha_ingreso=entrada or contenedor.created_at,
                     )
                 ),
             )

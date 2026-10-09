@@ -7,9 +7,11 @@ import styles from "../page.module.css";
 
 export default function VerificarPage() {
   const searchParams = useSearchParams();
+  // El botón del correo de verificación trae el correo y el código en la URL.
   const emailInicial = searchParams.get("email") ?? "";
+  const codigoInicial = searchParams.get("codigo") ?? "";
   const [email, setEmail] = useState(emailInicial);
-  const [codigo, setCodigo] = useState("");
+  const [codigo, setCodigo] = useState(codigoInicial);
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);

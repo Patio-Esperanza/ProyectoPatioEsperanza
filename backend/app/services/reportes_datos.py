@@ -4,7 +4,7 @@ import uuid
 from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import aliased, selectinload
 
 from app.models.cliente import Cliente
 from app.models.contenedor import Contenedor, Movimiento
@@ -114,6 +114,29 @@ def _formatear_fecha(dt: datetime.datetime | None) -> str:
     return dt.strftime("%d/%m/%Y %H:%M:%S")
 
 
+def _fecha_ultimo_ingreso():
+    """Fecha en que el contenedor entró físicamente al patio.
+
+    `Contenedor.created_at` es la fecha de registro en el sistema y un
+    contenedor puede registrarse días antes de llegar, así que no sirve para
+    medir estadía. La entrada real es el `ts` del movimiento de ingreso más
+    reciente: si el contenedor salió y volvió a entrar, la estadía vigente
+    empieza en ese último ingreso.
+
+    Devuelve una subconsulta correlacionada con `Contenedor`, por lo que la
+    consulta externa debe incluir esa tabla.
+    """
+    return (
+        select(func.max(Movimiento.ts))
+        .where(
+            Movimiento.contenedor_id == Contenedor.id,
+            Movimiento.tipo == TipoMovimiento.INGRESO,
+        )
+        .correlate(Contenedor)
+        .scalar_subquery()
+    )
+
+
 async def obtener_datos_contenedores_en_patio(
     db: AsyncSession,
     filtros: FiltrosReporte,
@@ -126,8 +149,10 @@ async def obtener_datos_contenedores_en_patio(
         EstadoContenedor.EN_SERVICIO_ESPECIAL,
     ]
 
+    fecha_entrada = _fecha_ultimo_ingreso()
+
     stmt = (
-        select(Contenedor, Cliente, Patio)
+        select(Contenedor, Cliente, Patio, fecha_entrada)
         .outerjoin(Cliente, Contenedor.cliente_id == Cliente.id)
         .outerjoin(Patio, Contenedor.patio_id == Patio.id)
         .where(Contenedor.estado.in_(estados_activos))
@@ -139,12 +164,14 @@ async def obtener_datos_contenedores_en_patio(
         stmt = stmt.where(Contenedor.patio_id == filtros.patio_id)
     if filtros.cliente_id:
         stmt = stmt.where(Contenedor.cliente_id == filtros.cliente_id)
+    # El rango de fechas filtra por entrada al patio, que es la fecha que
+    # muestra la tabla, no por la fecha de registro.
     if filtros.fecha_inicio:
         inicio_dt = datetime.datetime.combine(filtros.fecha_inicio, datetime.time.min, tzinfo=datetime.timezone.utc)
-        stmt = stmt.where(Contenedor.created_at >= inicio_dt)
+        stmt = stmt.where(fecha_entrada >= inicio_dt)
     if filtros.fecha_fin:
         fin_dt = datetime.datetime.combine(filtros.fecha_fin, datetime.time.max, tzinfo=datetime.timezone.utc)
-        stmt = stmt.where(Contenedor.created_at <= fin_dt)
+        stmt = stmt.where(fecha_entrada <= fin_dt)
     if filtros.busqueda:
         term = f"%{filtros.busqueda.strip()}%"
         stmt = stmt.where(Contenedor.numero_contenedor.ilike(term))
@@ -159,12 +186,12 @@ async def obtener_datos_contenedores_en_patio(
     vacios = 0
     dias_totales = 0
 
-    for c, cli, p in items_all:
+    for c, cli, p, entrada in items_all:
         if c.tipo == TipoContenedor.LLENO:
             llenos += 1
         else:
             vacios += 1
-        dias = max(0, (ahora - c.created_at).days) if c.created_at else 0
+        dias = max(0, (ahora - entrada).days) if entrada else 0
         dias_totales += dias
 
     estadia_promedio = (dias_totales / total) if total > 0 else 0.0
@@ -174,8 +201,8 @@ async def obtener_datos_contenedores_en_patio(
     items_pag = items_all[offset : offset + filtros.page_size]
 
     filas = []
-    for c, cli, p in items_pag:
-        dias = max(0, (ahora - c.created_at).days) if c.created_at else 0
+    for c, cli, p, entrada in items_pag:
+        dias = max(0, (ahora - entrada).days) if entrada else 0
         tipo_str = "Lleno" if c.tipo == TipoContenedor.LLENO else "Vacío"
         tamano_val = c.tamano.value if hasattr(c.tamano, "value") else str(c.tamano)
         filas.append(
@@ -185,7 +212,7 @@ async def obtener_datos_contenedores_en_patio(
                 "tipo": tipo_str,
                 "tamano": f"CONTENEDOR ESTANDAR {tamano_val}\"",
                 "estadia": dias,
-                "fecha_entrada": _formatear_fecha(c.created_at),
+                "fecha_entrada": _formatear_fecha(entrada),
                 "sellos": "",
                 "patio": p.nombre if p else "",
                 "viaje": f"ENT{str(c.id)[:6].upper()}",
@@ -278,8 +305,23 @@ async def obtener_datos_movimientos_salida(
     filtros: FiltrosReporte,
     patios_ids: list[uuid.UUID] | None = None,
 ) -> tuple[list[dict[str, Any]], int, list[ReporteKpi]]:
+    # Ingreso que abrió la estadía que esta salida cierra: el ingreso más
+    # reciente anterior a la salida. Un contenedor puede entrar y salir varias
+    # veces, así que el último ingreso del contenedor no siempre es el correcto.
+    ingreso = aliased(Movimiento)
+    ingreso_previo = (
+        select(func.max(ingreso.ts))
+        .where(
+            ingreso.contenedor_id == Movimiento.contenedor_id,
+            ingreso.tipo == TipoMovimiento.INGRESO,
+            ingreso.ts <= Movimiento.ts,
+        )
+        .correlate(Movimiento)
+        .scalar_subquery()
+    )
+
     stmt = (
-        select(Movimiento, Contenedor, Cliente, Patio, Usuario)
+        select(Movimiento, Contenedor, Cliente, Patio, Usuario, ingreso_previo)
         .join(Contenedor, Movimiento.contenedor_id == Contenedor.id)
         .outerjoin(Cliente, Contenedor.cliente_id == Cliente.id)
         .outerjoin(Patio, Movimiento.patio_id == Patio.id)
@@ -307,14 +349,14 @@ async def obtener_datos_movimientos_salida(
     items_all = res_all.all()
     total = len(items_all)
 
-    llenos = sum(1 for m, c, cli, p, u in items_all if c.tipo == TipoContenedor.LLENO)
+    llenos = sum(1 for m, c, cli, p, u, entrada in items_all if c.tipo == TipoContenedor.LLENO)
     vacios = total - llenos
 
     offset = (filtros.page - 1) * filtros.page_size
     items_pag = items_all[offset : offset + filtros.page_size]
 
     filas = []
-    for idx, (m, c, cli, p, u) in enumerate(items_pag, start=offset + 1):
+    for idx, (m, c, cli, p, u, entrada) in enumerate(items_pag, start=offset + 1):
         condicion_str = "Lleno" if c.tipo == TipoContenedor.LLENO else "Vacío"
         mes_ano = m.ts.strftime("%b%y").upper() if m.ts else "26"
         numero_viaje = f"SAL{str(m.id)[:6].upper()}-{mes_ano}"
@@ -322,7 +364,7 @@ async def obtener_datos_movimientos_salida(
             {
                 "folio": idx,
                 "numero_viaje": numero_viaje,
-                "fecha_entrada": _formatear_fecha(c.created_at),
+                "fecha_entrada": _formatear_fecha(entrada),
                 "fecha_salida": _formatear_fecha(m.ts),
                 "estado": "Completado",
                 "operador": u.nombre if u else "Operador Sistema",

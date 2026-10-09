@@ -1,10 +1,17 @@
+import datetime
 import uuid
 
 import pytest
 
 from app.core.security import create_access_token
-from app.models.contenedor import Contenedor
-from app.models.enums import EstadoContenedor, RolUsuario, TamanoContenedor, TipoContenedor
+from app.models.contenedor import Contenedor, Movimiento
+from app.models.enums import (
+    EstadoContenedor,
+    RolUsuario,
+    TamanoContenedor,
+    TipoContenedor,
+    TipoMovimiento,
+)
 from app.models.ubicacion import Carril, Patio, Tira, Tramo, Ubicacion
 from app.models.usuario import Usuario
 from app.services.mapa_patio import obtener_mapa
@@ -202,6 +209,54 @@ async def test_detalle_tira_devuelve_niveles_con_y_sin_contenedor(client, db_ses
     assert cuerpo["niveles"][0]["contenedor"]["numero_contenedor"] == "MSCU1234567"
     assert cuerpo["niveles"][1]["contenedor"] is None
     assert cuerpo["niveles"][2]["activo"] is False
+
+
+@pytest.mark.anyio
+async def test_detalle_tira_usa_la_fecha_del_movimiento_de_ingreso(client, db_session):
+    """El badge de días cuenta desde que el contenedor entró, no desde el registro.
+
+    Un contenedor se puede registrar semanas antes de llegar, así que
+    `created_at` infla los días en patio.
+    """
+    await _crear_usuario(db_session, RolUsuario.OPERADOR)
+    patio, tira, ubicaciones = await _crear_layout(db_session, "G")
+
+    ahora = datetime.datetime.now(datetime.timezone.utc)
+    entrada = ahora - datetime.timedelta(days=4)
+
+    contenedor = Contenedor(
+        numero_contenedor="MSCU7654321",
+        tipo=TipoContenedor.LLENO,
+        tamano=TamanoContenedor.VEINTE,
+        patio_id=patio.id,
+        ubicacion_id=ubicaciones[0].id,
+        estado=EstadoContenedor.UBICADO,
+        peso_kg=2400,
+        created_at=ahora - datetime.timedelta(days=25),
+    )
+    db_session.add(contenedor)
+    await db_session.flush()
+
+    db_session.add(
+        Movimiento(
+            contenedor_id=contenedor.id,
+            patio_id=patio.id,
+            tipo=TipoMovimiento.INGRESO,
+            ts=entrada,
+        )
+    )
+    await db_session.commit()
+    token = _token(RolUsuario.OPERADOR, [str(patio.id)])
+
+    response = await client.get(
+        f"/api/tiras/{tira.id}", headers={"Authorization": f"Bearer {token}"}
+    )
+
+    assert response.status_code == 200
+    reportada = datetime.datetime.fromisoformat(
+        response.json()["niveles"][0]["contenedor"]["fecha_ingreso"]
+    )
+    assert abs((reportada - entrada).total_seconds()) < 1
 
 
 @pytest.mark.anyio
