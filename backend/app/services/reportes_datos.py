@@ -399,13 +399,14 @@ async def obtener_datos_posiciones(
         EstadoContenedor.EN_SERVICIO_ESPECIAL,
     ]
 
+    fecha_entrada = _fecha_ultimo_ingreso()
+
     stmt = (
-        select(Contenedor, Ubicacion, Tira, Tramo, Carril, Patio)
+        select(Contenedor, Ubicacion, Tira, Tramo, Carril, fecha_entrada)
         .join(Ubicacion, Contenedor.ubicacion_id == Ubicacion.id)
         .join(Tira, Ubicacion.tira_id == Tira.id)
         .join(Tramo, Tira.tramo_id == Tramo.id)
         .join(Carril, Tramo.carril_id == Carril.id)
-        .join(Patio, Carril.patio_id == Patio.id)
         .where(Contenedor.ubicacion_id.isnot(None))
         .where(Contenedor.estado.in_(estados_activos))
     )
@@ -416,12 +417,14 @@ async def obtener_datos_posiciones(
         stmt = stmt.where(Contenedor.patio_id == filtros.patio_id)
     if filtros.cliente_id:
         stmt = stmt.where(Contenedor.cliente_id == filtros.cliente_id)
+    # El rango de fechas filtra por entrada al patio, que es la fecha que
+    # muestra la tabla, no por la fecha de registro.
     if filtros.fecha_inicio:
         inicio_dt = datetime.datetime.combine(filtros.fecha_inicio, datetime.time.min, tzinfo=datetime.timezone.utc)
-        stmt = stmt.where(Contenedor.created_at >= inicio_dt)
+        stmt = stmt.where(fecha_entrada >= inicio_dt)
     if filtros.fecha_fin:
         fin_dt = datetime.datetime.combine(filtros.fecha_fin, datetime.time.max, tzinfo=datetime.timezone.utc)
-        stmt = stmt.where(Contenedor.created_at <= fin_dt)
+        stmt = stmt.where(fecha_entrada <= fin_dt)
     if filtros.busqueda:
         term = f"%{filtros.busqueda.strip()}%"
         stmt = stmt.where(Contenedor.numero_contenedor.ilike(term))
@@ -430,24 +433,26 @@ async def obtener_datos_posiciones(
     items_all = res_all.all()
     total = len(items_all)
 
-    nivel_1 = sum(1 for c, ub, ti, tr, ca, p in items_all if ub.nivel == 1)
+    nivel_1 = sum(1 for c, ub, ti, tr, ca, entrada in items_all if ub.nivel == 1)
     nivel_superior = total - nivel_1
 
     offset = (filtros.page - 1) * filtros.page_size
     items_pag = items_all[offset : offset + filtros.page_size]
 
     filas = []
-    for c, ub, ti, tr, ca, p in items_pag:
-        pos_codigo = f"{p.codigo}-{ca.orden:02d}-{tr.orden:02d}-{ti.orden:02d}-{ub.nivel}"
+    for c, ub, ti, tr, ca, entrada in items_pag:
         filas.append(
             {
                 "contenedor": c.numero_contenedor,
-                "posicion": pos_codigo,
-                "carril": str(ca.orden),
-                "tramo": str(tr.orden),
-                "tira": str(ti.orden),
+                # `Ubicacion.codigo` es el rótulo que el operador lee en el
+                # patio y el que muestra el mapa. `orden` es el índice interno
+                # del layout, arranca en cero y no identifica nada en campo.
+                "posicion": ub.codigo,
+                "carril": ca.codigo,
+                "tramo": tr.codigo,
+                "tira": ti.codigo,
                 "altura": str(ub.nivel),
-                "fecha": _formatear_fecha(c.created_at),
+                "fecha": _formatear_fecha(entrada),
             }
         )
 

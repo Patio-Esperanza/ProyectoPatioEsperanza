@@ -389,6 +389,93 @@ async def test_reporte_posiciones(db_session: AsyncSession, datos_prueba_reporte
 
 
 @pytest.mark.asyncio
+async def test_posiciones_reporta_los_codigos_del_layout(
+    db_session: AsyncSession, datos_prueba_reportes
+):
+    """El reporte debe decir la posición igual que el mapa del patio.
+
+    `orden` es el índice interno del layout y empieza en cero, así que no se
+    puede mostrar al operador: la ubicación que el mapa rotula `C01-T01-R01-N2`
+    saldría como `0-0-0`. El código de cada nivel ya está en `Ubicacion.codigo`.
+    """
+    filtros = FiltrosReporte(page=1, page_size=25)
+    filas, _, _ = await obtener_datos_reporte(
+        db=db_session,
+        tipo=ReporteTipo.POSITIONS,
+        filtros=filtros,
+        patios_ids=[datos_prueba_reportes["patio"].id],
+    )
+
+    fila = next(f for f in filas if f["contenedor"] == "MSKU1234567")
+    assert fila["posicion"] == "C01-T01-R01-N2"
+    assert fila["carril"] == "C01"
+    assert fila["tramo"] == "T01"
+    assert fila["tira"] == "R01"
+    assert fila["altura"] == "2"
+
+
+@pytest.mark.asyncio
+async def test_posiciones_usa_la_fecha_del_movimiento_de_ingreso(
+    db_session: AsyncSession, datos_prueba_reportes
+):
+    """La columna de fecha es cuándo entró al patio, no cuándo se registró."""
+    ahora = datetime.datetime.now(datetime.timezone.utc)
+    patio = datos_prueba_reportes["patio"]
+    entrada = ahora - datetime.timedelta(days=4)
+
+    ubicacion = Ubicacion(
+        id=uuid.uuid4(),
+        tira_id=datos_prueba_reportes["ubicacion"].tira_id,
+        nivel=1,
+        codigo="C01-T01-R01-N1",
+        capacidad_peso_kg=30000,
+        activo=True,
+    )
+    db_session.add(ubicacion)
+    await db_session.flush()
+
+    contenedor = Contenedor(
+        id=uuid.uuid4(),
+        numero_contenedor="HLXU2223334",
+        tipo=TipoContenedor.LLENO,
+        tamano=TamanoContenedor.CUARENTA,
+        cliente_id=datos_prueba_reportes["cliente"].id,
+        patio_id=patio.id,
+        ubicacion_id=ubicacion.id,
+        estado=EstadoContenedor.UBICADO,
+        peso_kg=20000,
+        # Registrado hace 30 días, pero entró hace 4.
+        created_at=ahora - datetime.timedelta(days=30),
+    )
+    db_session.add(contenedor)
+    await db_session.flush()
+
+    db_session.add(
+        Movimiento(
+            id=uuid.uuid4(),
+            contenedor_id=contenedor.id,
+            patio_id=patio.id,
+            tipo=TipoMovimiento.INGRESO,
+            operador_id=datos_prueba_reportes["usuario"].id,
+            ts=entrada,
+        )
+    )
+    await db_session.flush()
+
+    filtros = FiltrosReporte(page=1, page_size=25)
+    filas, _, _ = await obtener_datos_reporte(
+        db=db_session,
+        tipo=ReporteTipo.POSITIONS,
+        filtros=filtros,
+        patios_ids=[patio.id],
+    )
+
+    fila = next(f for f in filas if f["contenedor"] == "HLXU2223334")
+    assert fila["fecha"] == _formatear_fecha(entrada)
+    assert fila["posicion"] == "C01-T01-R01-N1"
+
+
+@pytest.mark.asyncio
 async def test_reporte_servicios_especiales(db_session: AsyncSession, datos_prueba_reportes):
     filtros = FiltrosReporte(page=1, page_size=25)
     filas, total, kpis = await obtener_datos_reporte(
