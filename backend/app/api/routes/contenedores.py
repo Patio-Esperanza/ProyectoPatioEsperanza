@@ -78,6 +78,7 @@ async def crear_contenedor(
         patio_id=payload.patio_id,
         estado=EstadoContenedor.SOLICITUD_INGRESO,
         peso_kg=payload.peso_kg,
+        sellos=payload.sellos,
     )
     db.add(contenedor)
     await db.flush()
@@ -123,6 +124,7 @@ async def solicitar_contenedor(
         cliente_id=user.cliente_id,
         estado=EstadoContenedor.SOLICITUD_INGRESO,
         peso_kg=payload.peso_kg,
+        sellos=payload.sellos,
         fecha_estimada_salida=payload.fecha_estimada_retiro,
         pin_confirmacion=pin,
     )
@@ -147,14 +149,21 @@ async def solicitar_contenedor(
     usuario_result = await db.execute(select(Usuario).where(Usuario.id == user.id))
     usuario = usuario_result.scalar_one()
     try:
+        html, imagenes = correo_pin_confirmacion(
+            nombre=usuario.nombre,
+            pin=pin,
+            numero_contenedor=contenedor.numero_contenedor,
+            tipo="Lleno" if contenedor.tipo.value == "lleno" else "Vacío",
+            tamano=f'{contenedor.tamano.value}"',
+            peso_kg=contenedor.peso_kg,
+            sellos=contenedor.sellos,
+            fecha_estimada_retiro=contenedor.fecha_estimada_salida.strftime("%d/%m/%Y") if contenedor.fecha_estimada_salida else "",
+        )
         enviar_correo(
             usuario.email,
             "PIN de confirmación — Patio Esperanza",
-            correo_pin_confirmacion(
-                nombre=usuario.nombre,
-                pin=pin,
-                numero_contenedor=contenedor.numero_contenedor,
-            ),
+            html,
+            imagenes_inline=imagenes,
         )
     except Exception as exc:
         raise HTTPException(

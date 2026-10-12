@@ -33,6 +33,10 @@ class Contenedor(Base):
         nullable=False,
     )
     peso_kg: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Código del sello de seguridad. `NULL` cuando el contenedor no trae sello:
+    # la interfaz muestra entonces la leyenda "S/N". Varios sellos se capturan
+    # separados por coma en este mismo campo.
+    sellos: Mapped[str | None] = mapped_column(String(120), nullable=True)
     fecha_estimada_salida: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     pin_confirmacion: Mapped[str | None] = mapped_column(String(4), nullable=True)
     pin_verificado_en: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

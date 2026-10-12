@@ -19,3 +19,5 @@ apscheduler==3.10.4
 # ZoneInfo lee la base del sistema y falla al importar si falta. Imagenes slim no
 # la traen, asi que se incluye la copia de PyPI y el arranque no depende del host.
 tzdata==2026.5
+# QR en los correos de PIN: Python puro, sin Pillow.
+segno==1.6.6

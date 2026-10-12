@@ -24,6 +24,26 @@
   border-radius: 6px;
 }
 
+/* La casilla "Sin sello" va en la misma línea que su etiqueta, no apilada
+   como el resto de los campos del formulario. */
+.checkboxGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkboxGroup input[type="checkbox"] {
+  /* El padding general de `.form input` deforma la casilla. */
+  padding: 0;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.checkboxGroup label {
+  margin: 0;
+}
+
 .form button {
   align-self: flex-start;
   background: var(--azul);

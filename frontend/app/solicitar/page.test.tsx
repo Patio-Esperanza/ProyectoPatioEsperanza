@@ -53,6 +53,8 @@ describe("SolicitarPage", () => {
       pin_pendiente: true,
       peso_kg: 18000,
       fecha_estimada_retiro: "2026-10-01T00:00:00+00:00",
+      sellos: null,
+      sellos_texto: "S/N",
     });
 
     const user = userEvent.setup();
@@ -68,6 +70,8 @@ describe("SolicitarPage", () => {
       tamano: "40",
       peso_kg: 18000,
       fecha_estimada_retiro: undefined,
+      sellos: null,
+      sin_sello: false,
     });
     expect(await screen.findByText(/estado solicitud_ingreso/)).toBeInTheDocument();
   });

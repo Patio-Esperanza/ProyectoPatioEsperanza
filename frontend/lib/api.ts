@@ -226,6 +226,8 @@ export interface Contenedor {
   estado: EstadoContenedor;
   peso_kg: number;
   pin_pendiente: boolean;
+  sellos?: string | null;
+  sellos_texto?: string;
   fecha_estimada_retiro?: string | null;
   fecha_deseada_salida?: string | null;
 }
@@ -238,6 +240,7 @@ export async function createContenedor(
     tamano: TamanoContenedor;
     patio_id: string;
     peso_kg: number;
+    sellos?: string | null;
   }
 ): Promise<Contenedor> {
   return request<Contenedor>("/api/contenedores", {
@@ -436,6 +439,8 @@ export async function solicitarContenedor(
     tamano: TamanoContenedor;
     peso_kg: number;
     fecha_estimada_retiro?: string;
+    sellos?: string | null;
+    sin_sello?: boolean;
   }
 ): Promise<Contenedor> {
   return request<Contenedor>("/api/contenedores/solicitar", {

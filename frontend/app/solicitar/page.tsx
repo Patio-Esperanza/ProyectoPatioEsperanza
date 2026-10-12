@@ -20,6 +20,8 @@ function SolicitarContent() {
   const [tamano, setTamano] = useState<TamanoContenedor>("40");
   const [pesoKg, setPesoKg] = useState("");
   const [fechaEstimadaRetiro, setFechaEstimadaRetiro] = useState("");
+  const [sellos, setSellos] = useState("");
+  const [sinSello, setSinSello] = useState(false);
   const [creado, setCreado] = useState<Contenedor | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -37,6 +39,8 @@ function SolicitarContent() {
         tamano,
         peso_kg: Number(pesoKg),
         fecha_estimada_retiro: fechaEstimadaRetiro || undefined,
+        sellos: sinSello ? null : sellos || null,
+        sin_sello: sinSello,
       });
       setCreado(contenedor);
       setNumero("");
@@ -99,6 +103,27 @@ function SolicitarContent() {
           onChange={(e) => setPesoKg(e.target.value)}
           required
         />
+
+        <label htmlFor="sellos">Sellos</label>
+        <input
+          id="sellos"
+          value={sellos}
+          onChange={(e) => setSellos(e.target.value)}
+          disabled={sinSello}
+        />
+
+        <div className={styles.checkboxGroup}>
+          <input
+            type="checkbox"
+            id="sin_sello"
+            checked={sinSello}
+            onChange={(e) => {
+              setSinSello(e.target.checked);
+              if (e.target.checked) setSellos("");
+            }}
+          />
+          <label htmlFor="sin_sello">Sin sello</label>
+        </div>
 
         <label htmlFor="fecha_estimada_retiro">Fecha posible de retiro</label>
         <input

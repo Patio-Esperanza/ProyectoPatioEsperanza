@@ -134,7 +134,7 @@ async def _crear_cliente(db_session, rfc: str):
 def enviados_pin(monkeypatch):
     capturados = []
 
-    def _fake(destinatario, asunto, contenido_html):
+    def _fake(destinatario, asunto, contenido_html, imagenes_inline=None):
         capturados.append((destinatario, asunto, contenido_html))
 
     monkeypatch.setattr("app.api.routes.contenedores.enviar_correo", _fake)
@@ -166,6 +166,7 @@ async def test_cliente_solicita_contenedor_con_patio_autoasignado(client, db_ses
             "tamano": "40",
             "peso_kg": 18000,
             "fecha_estimada_retiro": "2026-10-01",
+            "sin_sello": True,
         },
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -184,7 +185,7 @@ async def test_operador_no_puede_solicitar_contenedor(client, db_session):
 
     response = await client.post(
         "/api/contenedores/solicitar",
-        json={"numero_contenedor": "CSQU3054383", "tipo": "lleno", "tamano": "40", "peso_kg": 18000},
+        json={"numero_contenedor": "CSQU3054383", "tipo": "lleno", "tamano": "40", "peso_kg": 18000, "sin_sello": True},
         headers={"Authorization": f"Bearer {token}"},
     )
 
@@ -223,6 +224,7 @@ async def test_solicitar_genera_pin_y_envia_correo(client, db_session, enviados_
             "tipo": "lleno",
             "tamano": "40",
             "peso_kg": 18000,
+            "sin_sello": True,
         },
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -279,6 +281,7 @@ async def test_el_correo_del_pin_usa_la_plantilla_de_marca(client, db_session, e
             "tipo": "lleno",
             "tamano": "40",
             "peso_kg": 18000,
+            "sin_sello": True,
         },
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -329,7 +332,7 @@ async def _crear_solicitud_con_pin(client, db_session, usuario_id: str, cliente_
 
     response = await client.post(
         "/api/contenedores/solicitar",
-        json={"numero_contenedor": numero, "tipo": "lleno", "tamano": "40", "peso_kg": 18000},
+        json={"numero_contenedor": numero, "tipo": "lleno", "tamano": "40", "peso_kg": 18000, "sin_sello": True},
         headers={"Authorization": f"Bearer {token}"},
     )
     return response.json()["id"], cliente
@@ -630,7 +633,7 @@ async def test_listar_contenedores_cliente_solo_ve_los_suyos(client, db_session,
     )
     await client.post(
         "/api/contenedores/solicitar",
-        json={"numero_contenedor": "CSQU3060025", "tipo": "lleno", "tamano": "40", "peso_kg": 18000},
+        json={"numero_contenedor": "CSQU3060025", "tipo": "lleno", "tamano": "40", "peso_kg": 18000, "sin_sello": True},
         headers={"Authorization": f"Bearer {otro_token}"},
     )
 

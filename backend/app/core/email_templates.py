@@ -7,9 +7,10 @@ igual en Gmail, Outlook y los clientes móviles.
 """
 
 from html import escape
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 from app.config import settings
+from app.core.qr import qr_png_bytes
 
 COLOR_DORADO = "#d3a860"
 COLOR_TEXTO = "#26242b"
@@ -109,11 +110,57 @@ def correo_codigo_verificacion(
     )
 
 
-def correo_pin_confirmacion(nombre: str | None, pin: str, numero_contenedor: str) -> str:
-    """Correo con el PIN que el cliente presenta en portería."""
+def correo_pin_confirmacion(
+    nombre: str | None,
+    pin: str,
+    numero_contenedor: str,
+    tipo: str = "",
+    tamano: str = "",
+    peso_kg: int | None = None,
+    sellos: str | None = None,
+    fecha_estimada_retiro: str = "",
+) -> tuple[str, list[tuple[str, bytes, str]]]:
+    """Correo con el PIN y hoja de verificación con QR.
+
+    Devuelve `(html, imagenes_inline)` para que `enviar_correo` adjunte el QR
+    como imagen inline referenciada por CID.
+
+    El QR lleva solo el número de contenedor en la URL de portería. El PIN NO
+    va en el QR: si lo llevara, escanear la foto del correo verificaría la
+    entrada sola y la verificación dejaría de servir para algo.
+    """
     saludo = escape(nombre) if nombre else "Estimado cliente"
     contenedor = escape(numero_contenedor)
+    url_porteria = (
+        f"{settings.app_base_url}/porteria?contenedor={quote(numero_contenedor, safe='')}"
+    )
     url_pase = f"{settings.app_base_url}/mis-contenedores"
+
+    # Leyenda del sello
+    sellos_texto = escape(sellos) if sellos else "S/N"
+
+    # Detalles del contenedor para la hoja
+    detalles_filas = f"""
+              <tr><td style="padding:4px 12px;font-family:{FUENTE};font-size:14px;color:{COLOR_TEXTO_SUAVE};border-bottom:1px solid #eee;"><strong>Contenedor</strong></td><td style="padding:4px 12px;font-family:{FUENTE};font-size:14px;color:{COLOR_TEXTO};border-bottom:1px solid #eee;">{contenedor}</td></tr>"""
+
+    if tipo:
+        detalles_filas += f"""
+              <tr><td style="padding:4px 12px;font-family:{FUENTE};font-size:14px;color:{COLOR_TEXTO_SUAVE};border-bottom:1px solid #eee;"><strong>Tipo</strong></td><td style="padding:4px 12px;font-family:{FUENTE};font-size:14px;color:{COLOR_TEXTO};border-bottom:1px solid #eee;">{escape(tipo)}</td></tr>"""
+
+    if tamano:
+        detalles_filas += f"""
+              <tr><td style="padding:4px 12px;font-family:{FUENTE};font-size:14px;color:{COLOR_TEXTO_SUAVE};border-bottom:1px solid #eee;"><strong>Tamaño</strong></td><td style="padding:4px 12px;font-family:{FUENTE};font-size:14px;color:{COLOR_TEXTO};border-bottom:1px solid #eee;">{escape(tamano)}</td></tr>"""
+
+    if peso_kg is not None:
+        detalles_filas += f"""
+              <tr><td style="padding:4px 12px;font-family:{FUENTE};font-size:14px;color:{COLOR_TEXTO_SUAVE};border-bottom:1px solid #eee;"><strong>Peso</strong></td><td style="padding:4px 12px;font-family:{FUENTE};font-size:14px;color:{COLOR_TEXTO};border-bottom:1px solid #eee;">{peso_kg:,} kg</td></tr>"""
+
+    detalles_filas += f"""
+              <tr><td style="padding:4px 12px;font-family:{FUENTE};font-size:14px;color:{COLOR_TEXTO_SUAVE};border-bottom:1px solid #eee;"><strong>Sellos</strong></td><td style="padding:4px 12px;font-family:{FUENTE};font-size:14px;color:{COLOR_TEXTO};border-bottom:1px solid #eee;">{sellos_texto}</td></tr>"""
+
+    if fecha_estimada_retiro:
+        detalles_filas += f"""
+              <tr><td style="padding:4px 12px;font-family:{FUENTE};font-size:14px;color:{COLOR_TEXTO_SUAVE};"><strong>Fecha est. retiro</strong></td><td style="padding:4px 12px;font-family:{FUENTE};font-size:14px;color:{COLOR_TEXTO};">{escape(fecha_estimada_retiro)}</td></tr>"""
 
     contenido = f"""            <p style="margin:0 0 16px 0;font-size:16px;line-height:24px;">Hola, {saludo},</p>
             <p style="margin:0 0 24px 0;font-size:15px;line-height:24px;color:{COLOR_TEXTO_SUAVE};">
@@ -140,8 +187,39 @@ def correo_pin_confirmacion(nombre: str | None, pin: str, numero_contenedor: str
                   <a href="{url_pase}" style="display:inline-block;background-color:{COLOR_DORADO};color:#ffffff;font-family:{FUENTE};font-size:16px;font-weight:bold;text-decoration:none;padding:14px 32px;border-radius:6px;">Ver mi pase de acceso</a>
                 </td>
               </tr>
+            </table>
+
+            <!-- Hoja de verificación para el portero -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:32px;border:2px dashed {COLOR_DORADO};border-radius:8px;">
+              <tr>
+                <td style="padding:20px 24px;">
+                  <p style="margin:0 0 4px 0;font-family:{FUENTE};font-size:11px;color:{COLOR_TEXTO_SUAVE};text-transform:uppercase;letter-spacing:2px;">Patio Esperanza</p>
+                  <p style="margin:0 0 16px 0;font-family:{FUENTE};font-size:18px;font-weight:bold;color:{COLOR_TEXTO};">Hoja de verificación de entrada</p>
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                      <td style="vertical-align:top;width:65%;">
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+{detalles_filas}
+                        </table>
+                        <p style="margin:16px 0 0 12px;font-family:{FUENTE};font-size:14px;color:{COLOR_TEXTO_SUAVE};">
+                          PIN: <strong style="font-size:24px;letter-spacing:6px;color:{COLOR_DORADO};">{pin}</strong>
+                        </p>
+                      </td>
+                      <td style="vertical-align:middle;text-align:center;width:35%;padding:8px;">
+                        <a href="{url_porteria}" style="text-decoration:none;"><img src="cid:qr_porteria" alt="QR verificación" width="140" height="140" style="width:140px;height:140px;display:block;margin:0 auto;border:0;" /></a>
+                        <p style="margin:8px 0 0 0;font-family:{FUENTE};font-size:11px;color:{COLOR_TEXTO_SUAVE};">Escanear para verificar</p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
             </table>"""
 
-    return _plantilla_base(
+    html = _plantilla_base(
         f"Tu PIN de acceso para el contenedor {numero_contenedor} es {pin}.", contenido
     )
+
+    qr_bytes = qr_png_bytes(url_porteria)
+    imagenes = [("qr_porteria", qr_bytes, "qr_porteria.png")]
+
+    return html, imagenes

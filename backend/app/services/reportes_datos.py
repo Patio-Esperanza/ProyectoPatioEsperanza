@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, selectinload
 
 from app.config import zona_horaria_app
+from app.core.sellos import mostrar_sellos
 from app.models.cliente import Cliente
 from app.models.contenedor import Contenedor, Movimiento
 from app.models.enums import (
@@ -218,7 +219,7 @@ async def obtener_datos_contenedores_en_patio(
                 "tamano": f"CONTENEDOR ESTANDAR {tamano_val}\"",
                 "estadia": dias,
                 "fecha_entrada": _formatear_fecha(entrada),
-                "sellos": "",
+                "sellos": mostrar_sellos(c.sellos),
                 "patio": p.nombre if p else "",
                 "viaje": f"ENT{str(c.id)[:6].upper()}",
             }

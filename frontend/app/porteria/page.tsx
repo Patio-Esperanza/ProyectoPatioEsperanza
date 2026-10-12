@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { Suspense, useState, type FormEvent } from "react";
+import { useSearchParams } from "next/navigation";
 import { AuthGuard } from "@/components/AuthGuard";
 import { ROLES_POR_RUTA } from "@/lib/rutas";
 import { useAuth } from "@/lib/auth-context";
@@ -9,7 +10,10 @@ import styles from "./page.module.css";
 
 function PorteriaContent() {
   const { token } = useAuth();
-  const [numero, setNumero] = useState("");
+  const searchParams = useSearchParams();
+  const contenedorParam = searchParams.get("contenedor") || "";
+
+  const [numero, setNumero] = useState(contenedorParam);
   const [pin, setPin] = useState("");
   const [verificado, setVerificado] = useState<Contenedor | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -66,6 +70,7 @@ function PorteriaContent() {
           required
           maxLength={4}
           inputMode="numeric"
+          autoFocus={!!contenedorParam}
         />
 
         <button type="submit" disabled={submitting}>
@@ -79,7 +84,9 @@ function PorteriaContent() {
 export default function PorteriaPage() {
   return (
     <AuthGuard roles={ROLES_POR_RUTA["/porteria"]}>
-      <PorteriaContent />
+      <Suspense>
+        <PorteriaContent />
+      </Suspense>
     </AuthGuard>
   );
 }
