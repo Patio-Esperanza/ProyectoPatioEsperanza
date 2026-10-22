@@ -24,6 +24,7 @@ from app.services.reportes_excel import generar_excel_reporte
 router = APIRouter()
 
 _ROLES_STAFF = (RolUsuario.OPERADOR, RolUsuario.SUPERVISOR, RolUsuario.ADMIN)
+_ROLES_ACCESO = (RolUsuario.OPERADOR, RolUsuario.SUPERVISOR, RolUsuario.ADMIN, RolUsuario.CLIENTE)
 
 
 @router.get("/{tipo}/preview", response_model=ReportePreviewOut)
@@ -31,8 +32,13 @@ async def preview_reporte(
     tipo: ReporteTipo,
     filtros: FiltrosReporte = Depends(),
     db: AsyncSession = Depends(get_db),
-    user: CurrentUser = Depends(require_roles(*_ROLES_STAFF)),
+    user: CurrentUser = Depends(require_roles(*_ROLES_ACCESO)),
 ) -> ReportePreviewOut:
+    if user.rol == RolUsuario.CLIENTE:
+        if not user.cliente_id:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Usuario cliente sin cliente asociado")
+        filtros.cliente_id = user.cliente_id
+
     patios_ids = user.patios or None
     return await obtener_preview_reporte(db, tipo, filtros, patios_ids)
 
@@ -42,8 +48,13 @@ async def exportar_reporte_excel(
     tipo: ReporteTipo,
     filtros: FiltrosReporte = Depends(),
     db: AsyncSession = Depends(get_db),
-    user: CurrentUser = Depends(require_roles(*_ROLES_STAFF)),
+    user: CurrentUser = Depends(require_roles(*_ROLES_ACCESO)),
 ) -> StreamingResponse:
+    if user.rol == RolUsuario.CLIENTE:
+        if not user.cliente_id:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Usuario cliente sin cliente asociado")
+        filtros.cliente_id = user.cliente_id
+
     patios_ids = user.patios or None
     preview = await obtener_preview_reporte(db, tipo, filtros, patios_ids)
     titulo, subtitulo = TITULOS_POR_REPORTE.get(tipo, ("Reporte", ""))

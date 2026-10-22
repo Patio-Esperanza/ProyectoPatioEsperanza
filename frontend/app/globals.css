@@ -229,3 +229,18 @@ button {
     scroll-behavior: auto !important;
   }
 }
+
+@media print {
+  nav, aside, button, .acciones, .lateral {
+    display: none !important;
+  }
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+  }
+}

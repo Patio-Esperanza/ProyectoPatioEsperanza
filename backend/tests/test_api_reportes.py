@@ -34,7 +34,7 @@ async def test_preview_requiere_autenticacion(client):
 
 
 @pytest.mark.anyio
-async def test_cliente_no_puede_ver_reportes(client, db_session):
+async def test_cliente_puede_ver_sus_reportes(client, db_session):
     await _crear_usuario_autenticado(db_session, RolUsuario.CLIENTE)
     token = _token(RolUsuario.CLIENTE)
 
@@ -42,7 +42,9 @@ async def test_cliente_no_puede_ver_reportes(client, db_session):
         "/api/reportes/containers-in-yard/preview",
         headers={"Authorization": f"Bearer {token}"},
     )
-    assert response.status_code == 403
+    assert response.status_code == 200
+    body = response.json()
+    assert body["tipo"] == "containers-in-yard"
 
 
 @pytest.mark.anyio

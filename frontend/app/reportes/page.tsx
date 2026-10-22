@@ -39,8 +39,9 @@ function mensajeError(err: unknown, respaldo: string): string {
 }
 
 function ReportesContent() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const { patios } = usePatiosDisponibles();
+  const esCliente = user?.rol === "cliente";
 
   const [tipo, setTipo] = useState<ReporteTipo>(REPORTES_DISPONIBLES[0].tipo);
   const [filtros, setFiltros] = useState<FiltrosReportePayload>(FILTROS_INICIALES);
@@ -198,14 +199,16 @@ function ReportesContent() {
       <div className={styles.columnas}>
         <aside className={styles.lateral}>
           <CatalogoReportes seleccionado={tipo} onSeleccionar={elegirReporte} />
-          <PanelReportesProgramados
-            programados={programados}
-            cargando={cargandoProgramados}
-            ocupadoId={ocupadoId}
-            onProbar={(id) => void probarEnvio(id)}
-            onAlternarActivo={(programado) => void alternarActivo(programado)}
-            onEliminar={(id) => void eliminar(id)}
-          />
+          {!esCliente && (
+            <PanelReportesProgramados
+              programados={programados}
+              cargando={cargandoProgramados}
+              ocupadoId={ocupadoId}
+              onProbar={(id) => void probarEnvio(id)}
+              onAlternarActivo={(programado) => void alternarActivo(programado)}
+              onEliminar={(id) => void eliminar(id)}
+            />
+          )}
         </aside>
 
         <section className={styles.detalle}>
@@ -220,6 +223,7 @@ function ReportesContent() {
             }}
             descargando={descargando}
             deshabilitado={cargando}
+            esCliente={esCliente}
           />
 
           {preview && <ResumenKpisReporte kpis={preview.kpis} />}

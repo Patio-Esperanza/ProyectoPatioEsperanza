@@ -33,7 +33,6 @@ const SECCIONES: Seccion[] = [
       { href: "/ubicaciones/sugerir", texto: "Sugerir ubicación" },
       { href: "/porteria", texto: "Portería" },
       { href: "/salidas", texto: "Salidas" },
-      { href: "/reportes", texto: "Reportes" },
     ],
   },
   {
@@ -49,6 +48,7 @@ const SECCIONES: Seccion[] = [
     enlaces: [
       { href: "/mis-contenedores", texto: "Mis contenedores" },
       { href: "/solicitar", texto: "Solicitar entrada" },
+      { href: "/reportes", texto: "Reportes" },
     ],
   },
 ];

@@ -27,8 +27,8 @@ export const ROLES_POR_RUTA: Record<string, string[]> = {
   "/porteria": [...ROLES_STAFF],
   // Cola de planeación, consume `GET /api/contenedores` con scoping de staff.
   "/salidas": [...ROLES_STAFF],
-  // `GET /api/reportes/...` usa require_roles(OPERADOR, SUPERVISOR, ADMIN).
-  "/reportes": [...ROLES_STAFF],
+  // `GET /api/reportes/...` usa require_roles(OPERADOR, SUPERVISOR, ADMIN, CLIENTE).
+  "/reportes": [...ROLES_STAFF, "cliente"],
   // require_roles(RolUsuario.ADMIN).
   "/usuarios": ["admin"],
   "/clientes": ["admin"],

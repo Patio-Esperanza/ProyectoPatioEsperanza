@@ -10,8 +10,10 @@ export interface FiltrosReporteBarProps {
   onCambiar: (filtros: FiltrosReportePayload) => void;
   onDescargar: () => void;
   onProgramar: () => void;
+  onPdf?: () => void;
   descargando?: boolean;
   deshabilitado?: boolean;
+  esCliente?: boolean;
 }
 
 export function FiltrosReporteBar({
@@ -20,8 +22,10 @@ export function FiltrosReporteBar({
   onCambiar,
   onDescargar,
   onProgramar,
+  onPdf,
   descargando = false,
   deshabilitado = false,
+  esCliente = false,
 }: FiltrosReporteBarProps) {
   // Cualquier cambio de filtro regresa a la página 1: mantener la página anterior deja al
   // usuario en una página que con el filtro nuevo puede ya no existir.
@@ -77,12 +81,21 @@ export function FiltrosReporteBar({
       </div>
 
       <div className={styles.acciones}>
+        {!esCliente && (
+          <Button
+            variant="secondary"
+            onClick={onProgramar}
+            disabled={deshabilitado}
+          >
+            Programar envío
+          </Button>
+        )}
         <Button
           variant="secondary"
-          onClick={onProgramar}
+          onClick={onPdf || (() => window.print())}
           disabled={deshabilitado}
         >
-          Programar envío
+          Exportar PDF
         </Button>
         <Button onClick={onDescargar} loading={descargando} disabled={deshabilitado}>
           Descargar Excel
