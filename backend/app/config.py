@@ -1,6 +1,6 @@
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -21,13 +21,37 @@ class Settings(BaseSettings):
     app_timezone: str = "America/Mexico_City"
 
     # Marca y datos de contacto que se muestran en los correos salientes.
+    #
+    # `APP_BASE_URL` es el origen público del frontend y de él salen todos los
+    # enlaces de los correos: el pase de acceso, la verificación de registro y
+    # la URL que va dentro del QR de portería. Cambiarlo en el entorno es lo
+    # único que hace falta cuando la plataforma se mueve de dominio. Sin barra
+    # final: las plantillas la agregan al concatenar la ruta.
     app_base_url: str = "https://www.patiolaesperanza.com.mx"
-    # WebP no se renderiza en Outlook de escritorio ni en algunos clientes de
-    # Android: si el logo no aparece, sube la versión PNG y cambia esta URL.
-    logo_url: str = "https://www.patiolaesperanza.com.mx/assets/img/EsperanzaLogo.webp"
+
+    # Logo del encabezado de los correos. Se deja vacío a propósito: si no se
+    # define `LOGO_URL`, se arma desde `app_base_url` y así el logo sigue al
+    # dominio activo en vez de quedarse apuntando a uno que ya no responde.
+    # Se usa el PNG de `frontend/public/EsperanzaLogo.png` porque WebP no se
+    # renderiza en Outlook de escritorio ni en algunos clientes de Android.
+    logo_url: str = ""
+
     contacto_telefono: str = "753 537 7838"
     contacto_email: str = "contacto@patiolaesperanza.com.mx"
     sitio_web: str = "www.patiolaesperanza.com.mx"
+
+    @field_validator("app_base_url")
+    @classmethod
+    def _normalizar_base_url(cls, value: str) -> str:
+        # Las plantillas concatenan "/ruta" sobre este valor. Con barra final
+        # quedarían URLs con "//" que algunos clientes de correo cortan.
+        return value.rstrip("/")
+
+    @model_validator(mode="after")
+    def _completar_logo_url(self):
+        if not self.logo_url:
+            self.logo_url = f"{self.app_base_url}/EsperanzaLogo.png"
+        return self
 
     @field_validator("app_timezone")
     @classmethod

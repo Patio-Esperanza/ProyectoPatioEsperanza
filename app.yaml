@@ -45,6 +45,14 @@ services:
       - key: CORS_ORIGINS
         value: "https://patio-esperanza-o7e6x.ondigitalocean.app"
         scope: RUN_TIME
+      # Origen publico del frontend. De aqui salen todos los enlaces de los
+      # correos: el pase de acceso, la verificacion de registro y la URL que va
+      # dentro del QR de porteria. Cuando patiolaesperanza.com.mx quede ligado
+      # a esta app, se cambia este valor (y CORS_ORIGINS) al dominio nuevo y no
+      # hace falta tocar codigo. Sin barra final.
+      - key: APP_BASE_URL
+        value: "https://patio-esperanza-o7e6x.ondigitalocean.app"
+        scope: RUN_TIME
       - key: SENDGRID_API_KEY
         value: "EV[1:HcnPICu5SsIHxuz3OBpCXyB5Wnfd//sP:tXhJFF3sDS/dSam+DG8qjratZWHVzYmhYOlD7eMHLd/bW8RH4lnV3sKrp3UZwG6oag56qbwCmkccb7AbZaANyYj5s8NGox8SaYJ6WRPwq2yQaRf0Cw==]"
         scope: RUN_TIME
