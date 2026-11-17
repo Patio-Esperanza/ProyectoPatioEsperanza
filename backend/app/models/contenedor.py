@@ -48,6 +48,7 @@ class Contenedor(Base):
     pin_salida_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     pin_salida_intentos: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     fecha_salida: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ingresado_en: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (

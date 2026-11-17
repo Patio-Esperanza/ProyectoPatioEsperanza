@@ -24,6 +24,7 @@ class Patio(Base):
     nombre: Mapped[str] = mapped_column(String(120), nullable=False)
     codigo: Mapped[str] = mapped_column(String(20), nullable=False, unique=True)
     timezone: Mapped[str] = mapped_column(String(50), nullable=False, default="America/Mexico_City")
+    umbral_estancia_dias: Mapped[int | None] = mapped_column(Integer, nullable=True)
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     anticipacion_minima_horas: Mapped[int] = mapped_column(Integer, nullable=False, default=24)
     ubicacion_entrada_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -57,15 +58,7 @@ class Tramo(Base):
     __table_args__ = (UniqueConstraint("carril_id", "codigo", name="uq_tramo_carril_codigo"),)
 
 
-class Tira(Base):
-    __tablename__ = "tiras"
-
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tramo_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tramos.id"), nullable=False)
-    codigo: Mapped[str] = mapped_column(String(20), nullable=False)
-    orden: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-
-    __table_args__ = (UniqueConstraint("tramo_id", "codigo", name="uq_tira_tramo_codigo"),)
+from app.models.tira import Tira  # noqa: F401
 
 
 class Ubicacion(Base):

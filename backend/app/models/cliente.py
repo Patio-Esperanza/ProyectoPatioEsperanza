@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Boolean, Enum, String
+from sqlalchemy import Boolean, Enum, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -22,4 +22,5 @@ class Cliente(Base):
         ),
         nullable=False,
     )
+    dias_libres: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
