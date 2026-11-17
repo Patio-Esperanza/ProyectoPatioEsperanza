@@ -154,3 +154,42 @@ async def sugerir_ubicacion(
 
     evaluados.sort(key=lambda c: c.costo)
     return evaluados[0]
+
+
+async def sugerir_ubicaciones_multiples(
+    db: AsyncSession,
+    *,
+    patio_id: uuid.UUID,
+    contenedor: Contenedor,
+    punto_referencia_ubicacion_id: uuid.UUID,
+    limit: int = 3,
+) -> list[CandidatoUbicacion]:
+    ref_result = await db.execute(select(Ubicacion).where(Ubicacion.id == punto_referencia_ubicacion_id))
+    ref_ubicacion = ref_result.scalar_one()
+    punto_referencia = await _coordenadas_de_ubicacion(db, ref_ubicacion)
+
+    libres_result = await db.execute(
+        select(Ubicacion)
+        .join(Tira, Ubicacion.tira_id == Tira.id)
+        .join(Tramo, Tira.tramo_id == Tramo.id)
+        .join(Carril, Tramo.carril_id == Carril.id)
+        .outerjoin(Contenedor, Contenedor.ubicacion_id == Ubicacion.id)
+        .where(Carril.patio_id == patio_id, Ubicacion.activo.is_(True), Contenedor.id.is_(None))
+    )
+    candidatos_libres = libres_result.scalars().all()
+
+    evaluados: list[CandidatoUbicacion] = []
+    for ubicacion in candidatos_libres:
+        if ubicacion.nivel > 1:
+            abajo = await _contenedor_en_nivel_inferior(db, ubicacion.tira_id, ubicacion.nivel)
+            if abajo is None:
+                continue
+        costo = await calcular_costo(db, ubicacion, contenedor, punto_referencia)
+        evaluados.append(
+            CandidatoUbicacion(
+                ubicacion.id, ubicacion.codigo, costo, ubicacion.tira_id, ubicacion.nivel
+            )
+        )
+
+    evaluados.sort(key=lambda c: c.costo)
+    return evaluados[:limit]

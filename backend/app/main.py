@@ -11,6 +11,7 @@ from app.api.routes import (
     contenedores,
     movimientos,
     patios,
+    porteria,
     reportes,
     tiras,
     ubicaciones,
@@ -61,3 +62,4 @@ app.include_router(tiras.router, prefix="/api/tiras", tags=["tiras"])
 app.include_router(usuarios.router, prefix="/api/usuarios", tags=["usuarios"])
 app.include_router(clientes.router, prefix="/api/clientes", tags=["clientes"])
 app.include_router(reportes.router, prefix="/api/reportes", tags=["reportes"])
+app.include_router(porteria.router, prefix="/api/porteria", tags=["porteria"])
