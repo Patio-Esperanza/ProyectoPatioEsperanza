@@ -22,16 +22,19 @@ from app.api.routes import (
 )
 from app.config import settings
 from app.db import SessionLocal, get_db
+from app import scheduler
 from app.services import reportes_scheduler
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     reportes_scheduler.iniciar_scheduler()
+    scheduler.iniciar_scheduler()
     async with SessionLocal() as db:
         await reportes_scheduler.sincronizar_tareas_desde_db(db)
     yield
     reportes_scheduler.apagar_scheduler()
+    scheduler.apagar_scheduler()
 
 
 app = FastAPI(title="Patio Esperanza API", lifespan=lifespan)
