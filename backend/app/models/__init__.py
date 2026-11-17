@@ -6,5 +6,6 @@ from app.models.contenedor import Contenedor, Movimiento  # noqa: F401
 from app.models.evidencia import Evidencia  # noqa: F401
 from app.models.inspeccion import Inspeccion  # noqa: F401
 from app.models.reporte_programado import ReporteProgramado  # noqa: F401
+from app.models.servicio import ServicioCatalogo, ServicioContenedor  # noqa: F401
 from app.models.ubicacion import Carril, Patio, Tira, Tramo, Ubicacion  # noqa: F401
 from app.models.usuario import Usuario, UsuarioPatio  # noqa: F401
