@@ -82,6 +82,7 @@ class ContenedorOut(BaseModel):
     tipo: TipoContenedor
     tamano: TamanoContenedor
     patio_id: uuid.UUID
+    ubicacion_id: uuid.UUID | None = None
     estado: EstadoContenedor
     peso_kg: int
     sellos: str | None = None
@@ -89,6 +90,7 @@ class ContenedorOut(BaseModel):
         default=None, validation_alias="fecha_estimada_salida"
     )
     fecha_deseada_salida: datetime.datetime | None = None
+    fecha_salida: datetime.datetime | None = None
     pin_confirmacion: str | None = Field(default=None, exclude=True)
 
     @computed_field  # type: ignore[prop-decorator]
