@@ -13,6 +13,8 @@ class RolUsuario(str, enum.Enum):
     ADMIN = "admin"
     GUARDIA = "guardia"
     DESPACHADOR = "despachador"
+    OPERADOR_GRUA = "operador_grua"
+    CUADRILLA = "cuadrilla"
 
 
 class TipoCliente(str, enum.Enum):

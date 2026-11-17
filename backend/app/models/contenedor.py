@@ -1,7 +1,7 @@
 import datetime
 import uuid
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Enum, ForeignKey, Index, Integer, String, Text, and_
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -45,6 +45,9 @@ class Contenedor(Base):
     )
     fecha_deseada_salida: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     salida_solicitada_en: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    pin_salida_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    pin_salida_intentos: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    fecha_salida: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (
@@ -53,6 +56,19 @@ class Contenedor(Base):
             "ubicacion_id",
             unique=True,
             postgresql_where=(ubicacion_id.is_not(None)),
+        ),
+        Index(
+            "uq_contenedor_activo",
+            "numero_contenedor",
+            unique=True,
+            postgresql_where=and_(
+                estado != EstadoContenedor.DESPACHADO,
+                estado != EstadoContenedor.RECHAZADO,
+            ),
+        ),
+        CheckConstraint(
+            "estado != 'despachado' OR ubicacion_id IS NULL",
+            name="ck_despachado_sin_ubicacion",
         ),
     )
 
