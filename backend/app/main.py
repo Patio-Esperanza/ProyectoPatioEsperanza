@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api import buscar, reubicar
+from app.api import buscar, reubicar, servicios
 from app.api.routes import (
     auth,
     clientes,
@@ -73,3 +73,4 @@ app.include_router(buscar.router, prefix="/api/buscar", tags=["buscar"])
 app.include_router(reubicar.router, prefix="/api", tags=["reubicar"])
 app.include_router(salidas.router, prefix="/api", tags=["salidas"])
 app.include_router(ubicacion_grua.router, prefix="/api", tags=["ubicacion_grua"])
+app.include_router(servicios.router, prefix="/api", tags=["servicios"])

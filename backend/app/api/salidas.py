@@ -10,6 +10,7 @@ from app.core.security import verify_password
 from app.db import get_db
 from app.models.contenedor import Contenedor, Movimiento
 from app.models.enums import EstadoContenedor, RolUsuario, TipoMovimiento
+from app.models.servicio import EstadoServicio, ServicioCatalogo, ServicioContenedor
 from app.schemas.contenedor import ContenedorOut
 from app.schemas.salidas import (
     SalidaDespacharCreate,
@@ -48,6 +49,23 @@ async def despachar_contenedor(
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             "El contenedor no está listo en portería para salida",
+        )
+
+    # Check if there are any active service orders that block exit
+    servicios_pendientes = await db.execute(
+        select(ServicioContenedor)
+        .join(ServicioCatalogo, ServicioContenedor.servicio_catalogo_id == ServicioCatalogo.id)
+        .where(
+            ServicioContenedor.contenedor_id == contenedor.id,
+            ServicioCatalogo.bloquea_salida.is_(True),
+            ServicioContenedor.estado.in_([EstadoServicio.SOLICITADO, EstadoServicio.PROGRAMADO, EstadoServicio.EN_PROCESO])
+        )
+    )
+    servicio_bloqueante = servicios_pendientes.scalars().first()
+    if servicio_bloqueante is not None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "El contenedor tiene servicios pendientes que bloquean la salida"
         )
 
     if contenedor.pin_salida_hash:
