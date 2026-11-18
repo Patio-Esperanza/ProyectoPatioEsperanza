@@ -28,6 +28,7 @@ import {
   solicitarSalida,
   actualizarPatio,
   fijarEntradaPatio,
+  configurarLayoutPatio,
   obtenerPreviewReporte,
   descargarReporteExcel,
   listarReportesProgramados,
