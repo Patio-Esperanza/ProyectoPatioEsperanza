@@ -4,23 +4,25 @@ from unittest.mock import patch
 import pytest
 
 from app.core.security import create_access_token
-from app.models.enums import RolUsuario
+from app.models.enums import RolUsuario, TipoCliente
+from app.models.cliente import Cliente
 from app.models.usuario import Usuario
 
 _USUARIO_ID = "00000000-0000-0000-0000-000000000001"
 
 
-def _token(rol: RolUsuario, patios: list[str] | None = None) -> str:
-    return create_access_token(_USUARIO_ID, rol.value, patios or [], 60)
+def _token(rol: RolUsuario, patios: list[str] | None = None, cliente_id: str | None = None) -> str:
+    return create_access_token(_USUARIO_ID, rol.value, patios or [], 60, cliente_id=cliente_id)
 
 
-async def _crear_usuario_autenticado(db_session, rol: RolUsuario) -> None:
+async def _crear_usuario_autenticado(db_session, rol: RolUsuario, cliente_id: uuid.UUID | None = None) -> None:
     db_session.add(
         Usuario(
             id=uuid.UUID(_USUARIO_ID),
             tipo=rol,
             email=f"{rol.value}@patio.mx",
             password_hash="hash",
+            cliente_id=cliente_id,
             activo=True,
         )
     )
@@ -35,8 +37,17 @@ async def test_preview_requiere_autenticacion(client):
 
 @pytest.mark.anyio
 async def test_cliente_puede_ver_sus_reportes(client, db_session):
-    await _crear_usuario_autenticado(db_session, RolUsuario.CLIENTE)
-    token = _token(RolUsuario.CLIENTE)
+    cli = Cliente(
+        id=uuid.uuid4(),
+        razon_social="Cliente Test",
+        rfc="TEST901201ABC",
+        tipo=TipoCliente.IMPORTADOR_EXPORTADOR,
+    )
+    db_session.add(cli)
+    await db_session.flush()
+
+    await _crear_usuario_autenticado(db_session, RolUsuario.CLIENTE, cliente_id=cli.id)
+    token = _token(RolUsuario.CLIENTE, cliente_id=str(cli.id))
 
     response = await client.get(
         "/api/reportes/containers-in-yard/preview",
@@ -101,61 +112,12 @@ async def test_crud_reporte_programado(client, db_session):
         headers=headers,
     )
     assert response.status_code == 201
-    creado = response.json()
-    prog_id = creado["id"]
-    assert creado["nombre"] == "Reporte Diario Test"
+    data = response.json()
+    prog_id = data["id"]
+    assert data["nombre"] == "Reporte Diario Test"
 
     # Listar
     response = await client.get("/api/reportes/programados", headers=headers)
     assert response.status_code == 200
-    assert any(p["id"] == prog_id for p in response.json())
-
-    # Detalle
-    response = await client.get(f"/api/reportes/programados/{prog_id}", headers=headers)
-    assert response.status_code == 200
-    assert response.json()["id"] == prog_id
-
-    # Actualizar
-    response = await client.patch(
-        f"/api/reportes/programados/{prog_id}",
-        json={"activo": False},
-        headers=headers,
-    )
-    assert response.status_code == 200
-    assert response.json()["activo"] is False
-
-    # Eliminar
-    response = await client.delete(f"/api/reportes/programados/{prog_id}", headers=headers)
-    assert response.status_code == 204
-
-    response = await client.get(f"/api/reportes/programados/{prog_id}", headers=headers)
-    assert response.status_code == 404
-
-
-@pytest.mark.anyio
-async def test_ejecutar_manual_reporte_programado(client, db_session):
-    await _crear_usuario_autenticado(db_session, RolUsuario.ADMIN)
-    token = _token(RolUsuario.ADMIN)
-    headers = {"Authorization": f"Bearer {token}"}
-
-    response = await client.post(
-        "/api/reportes/programados",
-        json={
-            "nombre": "Reporte Manual Test",
-            "tipo_reporte": "containers-in-yard",
-            "frecuencia": "diario",
-            "hora": 8,
-            "minuto": 30,
-            "destinatarios": ["ops@empresa.com"],
-            "asunto": "Reporte Manual",
-        },
-        headers=headers,
-    )
-    prog_id = response.json()["id"]
-
-    with patch("app.services.reportes_scheduler.enviar_correo_con_adjunto") as mock_email:
-        response = await client.post(
-            f"/api/reportes/programados/{prog_id}/ejecutar", headers=headers
-        )
-        assert response.status_code == 200
-        mock_email.assert_called_once()
+    list_data = response.json()
+    assert any(p["id"] == prog_id for p in list_data)

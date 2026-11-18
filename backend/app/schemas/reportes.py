@@ -3,7 +3,7 @@ import enum
 from typing import Any, Literal
 import uuid
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class ReporteTipo(str, enum.Enum):
@@ -12,6 +12,9 @@ class ReporteTipo(str, enum.Enum):
     DEPARTURE_MOVEMENTS = "departure-movements"
     POSITIONS = "positions"
     SPECIAL_SERVICES = "special-services"
+    INVENTORY_AT_DATE = "inventory-at-date"
+    STAY_BY_CLIENT = "stay-by-client"
+    DAILY_SUMMARY = "daily-summary"
 
 
 class FrecuenciaReporte(str, enum.Enum):
@@ -21,6 +24,7 @@ class FrecuenciaReporte(str, enum.Enum):
 
 
 class FiltrosReporte(BaseModel):
+    fecha: datetime.date | None = None
     fecha_inicio: datetime.date | None = None
     fecha_fin: datetime.date | None = None
     patio_id: uuid.UUID | None = None
@@ -28,6 +32,13 @@ class FiltrosReporte(BaseModel):
     busqueda: str | None = None
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=25, ge=1, le=500)
+
+    @model_validator(mode="after")
+    def validar_rango_fechas(self) -> "FiltrosReporte":
+        if self.fecha_inicio and self.fecha_fin:
+            if (self.fecha_fin - self.fecha_inicio).days > 366:
+                raise ValueError("El rango de fechas no puede superar 366 días")
+        return self
 
 
 class ReporteColumna(BaseModel):

@@ -2,7 +2,7 @@
 
 from app.models.auditoria import Auditoria  # noqa: F401
 from app.models.cliente import Cliente  # noqa: F401
-from app.models.contenedor import Contenedor, Movimiento  # noqa: F401
+from app.models.contenedor import Contenedor, Movimiento, InventarioDiario  # noqa: F401
 from app.models.evidencia import Evidencia  # noqa: F401
 from app.models.inspeccion import Inspeccion  # noqa: F401
 from app.models.reporte_programado import ReporteProgramado  # noqa: F401

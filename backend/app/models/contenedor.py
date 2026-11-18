@@ -1,7 +1,7 @@
 import datetime
 import uuid
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, Enum, ForeignKey, Index, Integer, String, Text, and_
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Enum, ForeignKey, Index, Integer, String, Text, and_, Table, Column, Date
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -98,3 +98,32 @@ class Movimiento(Base):
     motivo_override: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     __table_args__ = (Index("ix_movimiento_contenedor_ts", "contenedor_id", "ts"),)
+
+
+class InventarioDiario(Base):
+    __tablename__ = "inventario_diario"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    fecha: Mapped[datetime.date] = mapped_column(Date, nullable=False)
+    patio_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("patios.id"), nullable=False)
+    contenedor_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("contenedores.id"), nullable=False)
+    cliente_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("clientes.id"), nullable=True)
+    ubicacion_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("ubicaciones.id"), nullable=True)
+    estado: Mapped[str] = mapped_column(String(50), nullable=False)
+    dias_estancia: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+v_estancias_table = Table(
+    "v_estancias",
+    Base.metadata,
+    Column("contenedor_id", UUID(as_uuid=True), primary_key=True),
+    Column("patio_id", UUID(as_uuid=True)),
+    Column("cliente_id", UUID(as_uuid=True)),
+    Column("ingresado_en", DateTime(timezone=True)),
+    Column("fecha_salida", DateTime(timezone=True)),
+    Column("zona_horaria", String),
+    Column("dias_estancia", Integer),
+    Column("dias_libres", Integer),
+    Column("dias_cobrables", Integer),
+    extend_existing=True,
+)

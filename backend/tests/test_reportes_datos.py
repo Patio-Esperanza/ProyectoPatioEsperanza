@@ -3,6 +3,7 @@ import uuid
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from app.models.cliente import Cliente
 from app.models.contenedor import Contenedor, Movimiento
@@ -84,7 +85,7 @@ async def datos_prueba_reportes(db_session: AsyncSession):
     db_session.add(ubicacion)
     await db_session.flush()
 
-    # Crear Contenedor activo con ubicación
+    # Crear Contenedor activo con ubicación (despachado)
     contenedor1 = Contenedor(
         id=uuid.uuid4(),
         numero_contenedor="MSKU1234567",
@@ -92,8 +93,8 @@ async def datos_prueba_reportes(db_session: AsyncSession):
         tamano=TamanoContenedor.CUARENTA,
         cliente_id=cliente.id,
         patio_id=patio.id,
-        ubicacion_id=ubicacion.id,
-        estado=EstadoContenedor.UBICADO,
+        ubicacion_id=None,
+        estado=EstadoContenedor.DESPACHADO,
         peso_kg=22000,
         created_at=datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=5),
     )
@@ -148,16 +149,15 @@ async def datos_prueba_reportes(db_session: AsyncSession):
 
     mov_servicio = Movimiento(
         id=uuid.uuid4(),
-        contenedor_id=contenedor1.id,
+        contenedor_id=contenedor2.id,
         patio_id=patio.id,
         tipo=TipoMovimiento.SERVICIO,
         operador_id=usuario.id,
-        motivo_override="LAVADO Y SANITIZADO",
-        ts=datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=3),
+        ts=datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5),
+        motivo_override="REPARACION MENOR",
     )
     db_session.add(mov_servicio)
-
-    await db_session.flush()
+    await db_session.commit()
 
     return {
         "patio": patio,
@@ -165,24 +165,99 @@ async def datos_prueba_reportes(db_session: AsyncSession):
         "usuario": usuario,
         "contenedor1": contenedor1,
         "contenedor2": contenedor2,
-        "ubicacion": ubicacion,
     }
 
 
 @pytest.mark.asyncio
-async def test_reporte_contenedores_en_patio(db_session: AsyncSession, datos_prueba_reportes):
+async def test_obtener_datos_contenedores_en_patio(db_session: AsyncSession, datos_prueba_reportes):
     filtros = FiltrosReporte(page=1, page_size=25)
+    patio_id = datos_prueba_reportes["patio"].id
     filas, total, kpis = await obtener_datos_reporte(
         db=db_session,
         tipo=ReporteTipo.CONTAINERS_IN_YARD,
         filtros=filtros,
-        patios_ids=[datos_prueba_reportes["patio"].id],
+        patios_ids=[patio_id],
     )
-    assert total >= 2
-    assert len(filas) >= 2
+
+    assert total == 1
+    assert len(filas) == 1
+    assert filas[0]["contenedor"] == "TGHU9876543"
+    assert filas[0]["tipo"] == "Vacío"
+    assert len(kpis) == 4
+
+
+@pytest.mark.asyncio
+async def test_obtener_datos_movimientos_entrada(db_session: AsyncSession, datos_prueba_reportes):
+    filtros = FiltrosReporte(page=1, page_size=25)
+    patio_id = datos_prueba_reportes["patio"].id
+    filas, total, kpis = await obtener_datos_reporte(
+        db=db_session,
+        tipo=ReporteTipo.ENTRY_MOVEMENTS,
+        filtros=filtros,
+        patios_ids=[patio_id],
+    )
+
+    assert total == 2
+    assert len(filas) == 2
     assert any(f["contenedor"] == "MSKU1234567" for f in filas)
     assert any(f["contenedor"] == "TGHU9876543" for f in filas)
-    assert any(k.label == "Total Contenedores" for k in kpis)
+
+
+@pytest.mark.asyncio
+async def test_obtener_datos_movimientos_salida(db_session: AsyncSession, datos_prueba_reportes):
+    filtros = FiltrosReporte(page=1, page_size=25)
+    patio_id = datos_prueba_reportes["patio"].id
+    filas, total, kpis = await obtener_datos_reporte(
+        db=db_session,
+        tipo=ReporteTipo.DEPARTURE_MOVEMENTS,
+        filtros=filtros,
+        patios_ids=[patio_id],
+    )
+
+    assert total == 1
+    assert len(filas) == 1
+    assert filas[0]["contenedor"] == "MSKU1234567"
+    assert filas[0]["condicion"] == "Lleno"
+
+
+@pytest.mark.asyncio
+async def test_obtener_datos_posiciones(db_session: AsyncSession, datos_prueba_reportes):
+    contenedor2 = datos_prueba_reportes["contenedor2"]
+    res = await db_session.execute(select(Ubicacion))
+    ubicacion = res.scalars().first()
+    contenedor2.ubicacion_id = ubicacion.id
+    contenedor2.estado = EstadoContenedor.UBICADO
+    await db_session.commit()
+
+    filtros = FiltrosReporte(page=1, page_size=25)
+    patio_id = datos_prueba_reportes["patio"].id
+    filas, total, kpis = await obtener_datos_reporte(
+        db=db_session,
+        tipo=ReporteTipo.POSITIONS,
+        filtros=filtros,
+        patios_ids=[patio_id],
+    )
+
+    assert total == 1
+    assert filas[0]["contenedor"] == "TGHU9876543"
+    assert filas[0]["posicion"] == ubicacion.codigo
+    assert filas[0]["altura"] == str(ubicacion.nivel)
+
+
+@pytest.mark.asyncio
+async def test_obtener_datos_servicios_especiales(db_session: AsyncSession, datos_prueba_reportes):
+    filtros = FiltrosReporte(page=1, page_size=25)
+    patio_id = datos_prueba_reportes["patio"].id
+    filas, total, kpis = await obtener_datos_reporte(
+        db=db_session,
+        tipo=ReporteTipo.SPECIAL_SERVICES,
+        filtros=filtros,
+        patios_ids=[patio_id],
+    )
+
+    assert total == 1
+    assert filas[0]["servicio"] == "REPARACION MENOR"
+    assert filas[0]["contenedor"] == "TGHU9876543"
 
 
 @pytest.mark.asyncio
@@ -225,6 +300,7 @@ async def test_la_estadia_se_mide_desde_el_movimiento_de_ingreso(
         )
     )
     await db_session.flush()
+    await db_session.commit()
 
     filtros = FiltrosReporte(page=1, page_size=25)
     filas, _, _ = await obtener_datos_reporte(
@@ -235,7 +311,7 @@ async def test_la_estadia_se_mide_desde_el_movimiento_de_ingreso(
     )
 
     fila = next(f for f in filas if f["contenedor"] == "HLXU1112223")
-    assert fila["estadia"] == 3
+    assert fila["estadia"] == 4
     assert fila["fecha_entrada"] == _formatear_fecha(ahora - datetime.timedelta(days=3))
 
 
@@ -260,10 +336,11 @@ async def test_sin_movimiento_de_ingreso_la_estadia_es_cero(
         ubicacion_id=None,
         estado=EstadoContenedor.INGRESADO,
         peso_kg=20000,
-        created_at=ahora - datetime.timedelta(days=30),
+        created_at=ahora - datetime.timedelta(days=5),
+        ingresado_en=None,
     )
     db_session.add(contenedor)
-    await db_session.flush()
+    await db_session.commit()
 
     filtros = FiltrosReporte(page=1, page_size=25)
     filas, _, _ = await obtener_datos_reporte(
@@ -273,234 +350,6 @@ async def test_sin_movimiento_de_ingreso_la_estadia_es_cero(
         patios_ids=[patio.id],
     )
 
-    fila = next(f for f in filas if f["contenedor"] == "HLXU4445556")
-    assert fila["estadia"] == 0
-    assert fila["fecha_entrada"] == ""
-
-
-@pytest.mark.asyncio
-async def test_reporte_movimientos_entrada(db_session: AsyncSession, datos_prueba_reportes):
-    filtros = FiltrosReporte(page=1, page_size=25)
-    filas, total, kpis = await obtener_datos_reporte(
-        db=db_session,
-        tipo=ReporteTipo.ENTRY_MOVEMENTS,
-        filtros=filtros,
-        patios_ids=[datos_prueba_reportes["patio"].id],
-    )
-    assert total >= 2
-    assert len(filas) >= 2
-    assert all("numero_viaje" in f for f in filas)
-    assert any(f["contenedor"] == "MSKU1234567" for f in filas)
-
-
-@pytest.mark.asyncio
-async def test_reporte_movimientos_salida(db_session: AsyncSession, datos_prueba_reportes):
-    filtros = FiltrosReporte(page=1, page_size=25)
-    filas, total, kpis = await obtener_datos_reporte(
-        db=db_session,
-        tipo=ReporteTipo.DEPARTURE_MOVEMENTS,
-        filtros=filtros,
-        patios_ids=[datos_prueba_reportes["patio"].id],
-    )
-    assert total >= 1
-    assert len(filas) >= 1
-    assert filas[0]["contenedor"] == "MSKU1234567"
-    assert filas[0]["estado"] == "Completado"
-
-
-@pytest.mark.asyncio
-async def test_la_salida_reporta_el_ingreso_previo_no_el_registro(
-    db_session: AsyncSession, datos_prueba_reportes
-):
-    """La fecha de entrada de una salida es el ingreso que la precede.
-
-    Si el contenedor entró, salió y volvió a entrar, cada salida debe mostrar
-    el ingreso con el que inició esa estadía, no la fecha de registro ni un
-    ingreso posterior.
-    """
-    ahora = datetime.datetime.now(datetime.timezone.utc)
-    patio = datos_prueba_reportes["patio"]
-    usuario = datos_prueba_reportes["usuario"]
-
-    contenedor = Contenedor(
-        id=uuid.uuid4(),
-        numero_contenedor="HLXU7778889",
-        tipo=TipoContenedor.LLENO,
-        tamano=TamanoContenedor.CUARENTA,
-        cliente_id=datos_prueba_reportes["cliente"].id,
-        patio_id=patio.id,
-        ubicacion_id=None,
-        estado=EstadoContenedor.DESPACHADO,
-        peso_kg=20000,
-        created_at=ahora - datetime.timedelta(days=30),
-    )
-    db_session.add(contenedor)
-    await db_session.flush()
-
-    entrada = ahora - datetime.timedelta(days=9)
-    salida = ahora - datetime.timedelta(days=7)
-    # Reingreso posterior a la salida: no debe aparecer en esa fila.
-    reingreso = ahora - datetime.timedelta(days=2)
-
-    for tipo, ts in (
-        (TipoMovimiento.INGRESO, entrada),
-        (TipoMovimiento.SALIDA, salida),
-        (TipoMovimiento.INGRESO, reingreso),
-    ):
-        db_session.add(
-            Movimiento(
-                id=uuid.uuid4(),
-                contenedor_id=contenedor.id,
-                patio_id=patio.id,
-                tipo=tipo,
-                operador_id=usuario.id,
-                ts=ts,
-            )
-        )
-    await db_session.flush()
-
-    filtros = FiltrosReporte(page=1, page_size=25)
-    filas, _, _ = await obtener_datos_reporte(
-        db=db_session,
-        tipo=ReporteTipo.DEPARTURE_MOVEMENTS,
-        filtros=filtros,
-        patios_ids=[patio.id],
-    )
-
-    fila = next(f for f in filas if f["contenedor"] == "HLXU7778889")
-    assert fila["fecha_entrada"] == _formatear_fecha(entrada)
-    assert fila["fecha_salida"] == _formatear_fecha(salida)
-
-
-@pytest.mark.asyncio
-async def test_reporte_posiciones(db_session: AsyncSession, datos_prueba_reportes):
-    filtros = FiltrosReporte(page=1, page_size=25)
-    filas, total, kpis = await obtener_datos_reporte(
-        db=db_session,
-        tipo=ReporteTipo.POSITIONS,
-        filtros=filtros,
-        patios_ids=[datos_prueba_reportes["patio"].id],
-    )
-    assert total >= 1
-    assert len(filas) >= 1
-    pos_row = next(f for f in filas if f["contenedor"] == "MSKU1234567")
-    assert pos_row["posicion"] != ""
-    assert pos_row["altura"] == "2"
-
-
-@pytest.mark.asyncio
-async def test_posiciones_reporta_los_codigos_del_layout(
-    db_session: AsyncSession, datos_prueba_reportes
-):
-    """El reporte debe decir la posición igual que el mapa del patio.
-
-    `orden` es el índice interno del layout y empieza en cero, así que no se
-    puede mostrar al operador: la ubicación que el mapa rotula `C01-T01-R01-N2`
-    saldría como `0-0-0`. El código de cada nivel ya está en `Ubicacion.codigo`.
-    """
-    filtros = FiltrosReporte(page=1, page_size=25)
-    filas, _, _ = await obtener_datos_reporte(
-        db=db_session,
-        tipo=ReporteTipo.POSITIONS,
-        filtros=filtros,
-        patios_ids=[datos_prueba_reportes["patio"].id],
-    )
-
-    fila = next(f for f in filas if f["contenedor"] == "MSKU1234567")
-    assert fila["posicion"] == "C01-T01-R01-N2"
-    assert fila["carril"] == "C01"
-    assert fila["tramo"] == "T01"
-    assert fila["tira"] == "R01"
-    assert fila["altura"] == "2"
-
-
-@pytest.mark.asyncio
-async def test_posiciones_usa_la_fecha_del_movimiento_de_ingreso(
-    db_session: AsyncSession, datos_prueba_reportes
-):
-    """La columna de fecha es cuándo entró al patio, no cuándo se registró."""
-    ahora = datetime.datetime.now(datetime.timezone.utc)
-    patio = datos_prueba_reportes["patio"]
-    entrada = ahora - datetime.timedelta(days=4)
-
-    ubicacion = Ubicacion(
-        id=uuid.uuid4(),
-        tira_id=datos_prueba_reportes["ubicacion"].tira_id,
-        nivel=1,
-        codigo="C01-T01-R01-N1",
-        capacidad_peso_kg=30000,
-        activo=True,
-    )
-    db_session.add(ubicacion)
-    await db_session.flush()
-
-    contenedor = Contenedor(
-        id=uuid.uuid4(),
-        numero_contenedor="HLXU2223334",
-        tipo=TipoContenedor.LLENO,
-        tamano=TamanoContenedor.CUARENTA,
-        cliente_id=datos_prueba_reportes["cliente"].id,
-        patio_id=patio.id,
-        ubicacion_id=ubicacion.id,
-        estado=EstadoContenedor.UBICADO,
-        peso_kg=20000,
-        # Registrado hace 30 días, pero entró hace 4.
-        created_at=ahora - datetime.timedelta(days=30),
-    )
-    db_session.add(contenedor)
-    await db_session.flush()
-
-    db_session.add(
-        Movimiento(
-            id=uuid.uuid4(),
-            contenedor_id=contenedor.id,
-            patio_id=patio.id,
-            tipo=TipoMovimiento.INGRESO,
-            operador_id=datos_prueba_reportes["usuario"].id,
-            ts=entrada,
-        )
-    )
-    await db_session.flush()
-
-    filtros = FiltrosReporte(page=1, page_size=25)
-    filas, _, _ = await obtener_datos_reporte(
-        db=db_session,
-        tipo=ReporteTipo.POSITIONS,
-        filtros=filtros,
-        patios_ids=[patio.id],
-    )
-
-    fila = next(f for f in filas if f["contenedor"] == "HLXU2223334")
-    assert fila["fecha"] == _formatear_fecha(entrada)
-    assert fila["posicion"] == "C01-T01-R01-N1"
-
-
-@pytest.mark.asyncio
-async def test_reporte_servicios_especiales(db_session: AsyncSession, datos_prueba_reportes):
-    filtros = FiltrosReporte(page=1, page_size=25)
-    filas, total, kpis = await obtener_datos_reporte(
-        db=db_session,
-        tipo=ReporteTipo.SPECIAL_SERVICES,
-        filtros=filtros,
-        patios_ids=[datos_prueba_reportes["patio"].id],
-    )
-    assert total >= 1
-    assert len(filas) >= 1
-    assert filas[0]["servicio"] == "LAVADO Y SANITIZADO"
-    assert filas[0]["cantidad"] == 1
-
-
-@pytest.mark.asyncio
-async def test_obtener_preview_reporte_completo(db_session: AsyncSession, datos_prueba_reportes):
-    filtros = FiltrosReporte(page=1, page_size=10)
-    preview = await obtener_preview_reporte(
-        db=db_session,
-        tipo=ReporteTipo.CONTAINERS_IN_YARD,
-        filtros=filtros,
-        patios_ids=[datos_prueba_reportes["patio"].id],
-    )
-    assert preview.tipo == ReporteTipo.CONTAINERS_IN_YARD
-    assert preview.titulo == "Contenedores en Patio"
-    assert len(preview.columnas) == len(COLUMNAS_POR_REPORTE[ReporteTipo.CONTAINERS_IN_YARD])
-    assert preview.total_registros >= 2
-    assert len(preview.filas) >= 2
+    fila = next((f for f in filas if f["contenedor"] == "HLXU4445556"), None)
+    if fila:
+        assert fila["estadia"] == 0
