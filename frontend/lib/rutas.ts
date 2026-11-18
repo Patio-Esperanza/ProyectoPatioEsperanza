@@ -15,8 +15,8 @@ export const ROLES_POR_RUTA: Record<string, string[]> = {
   // `GET /api/patios` no exige rol, pero la página existe para administrar el patio y no
   // le sirve a un cliente. Restricción de interfaz, no de seguridad.
   "/patios": [...ROLES_STAFF],
-  // `GET /api/patios/{id}/mapa` usa los mismos roles que _ROLES_ESCRITURA.
-  "/mapa": [...ROLES_STAFF],
+  // `GET /api/patios/{id}/mapa` usa los mismos roles que _ROLES_ESCRITURA y operador_grua.
+  "/mapa": ["operador_grua", ...ROLES_STAFF],
   // `POST /api/contenedores` usa _ROLES_ESCRITURA.
   "/contenedores": [...ROLES_STAFF],
   // `POST /api/movimientos` usa _ROLES_ESCRITURA.
@@ -27,6 +27,8 @@ export const ROLES_POR_RUTA: Record<string, string[]> = {
   "/porteria": [...ROLES_STAFF],
   // Cola de planeación, consume `GET /api/contenedores` con scoping de staff.
   "/salidas": [...ROLES_STAFF],
+  // Servicios: lista de órdenes, inicia/termina - cuadrilla, operador_grua, operador, supervisor, admin
+  "/servicios": ["cuadrilla", "operador_grua", ...ROLES_STAFF],
   // `GET /api/reportes/...` usa require_roles(OPERADOR, SUPERVISOR, ADMIN, CLIENTE).
   "/reportes": [...ROLES_STAFF, "cliente"],
   // require_roles(RolUsuario.ADMIN).
@@ -42,5 +44,7 @@ export const ROLES_POR_RUTA: Record<string, string[]> = {
  * destino después de iniciar sesión.
  */
 export function homePorRol(rol: string): string {
-  return rol === "cliente" ? "/mis-contenedores" : "/patios";
+  if (rol === "cliente") return "/mis-contenedores";
+  if (rol === "cuadrilla") return "/servicios";
+  return "/patios";
 }

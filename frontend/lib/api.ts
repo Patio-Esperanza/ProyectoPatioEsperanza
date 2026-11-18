@@ -697,3 +697,86 @@ export async function ejecutarReporteProgramadoManual(
     token,
   });
 }
+
+export type EstadoServicio =
+  | "solicitado"
+  | "programado"
+  | "en_proceso"
+  | "terminado"
+  | "rechazado"
+  | "cancelado";
+
+export interface ServicioCatalogo {
+  id: string;
+  patio_id: string | null;
+  codigo: string;
+  nombre: string;
+  descripcion: string | null;
+  requiere_evidencia: boolean;
+  bloquea_salida: boolean;
+  requiere_mover: boolean;
+  requiere_unidad_relacionada: boolean;
+  cliente_puede_solicitar: boolean;
+  activo: boolean;
+}
+
+export interface Evidencia {
+  id: string;
+  url: string;
+  tipo: string;
+  created_at: string;
+}
+
+export interface ServicioContenedor {
+  id: string;
+  contenedor_id: string;
+  servicio_catalogo_id: string;
+  cliente_id: string | null;
+  estado: EstadoServicio;
+  solicitado_por: string;
+  asignado_a: string | null;
+  realizado_por: string | null;
+  programado_para: string | null;
+  solicitado_en: string;
+  iniciado_en: string | null;
+  terminado_en: string | null;
+  notas: string | null;
+  motivo: string | null;
+  unidad_relacionada_tipo: "contenedor" | "caja_seca" | null;
+  contenedor_relacionado_id: string | null;
+  unidad_relacionada_ref: string | null;
+  catalogo?: ServicioCatalogo;
+  evidencias?: Evidencia[];
+}
+
+export async function listarServicios(
+  token: string,
+  filtros?: { estado?: EstadoServicio; contenedor_id?: string; patio_id?: string }
+): Promise<ServicioContenedor[]> {
+  const params = new URLSearchParams();
+  if (filtros?.estado) params.set("estado", filtros.estado);
+  if (filtros?.contenedor_id) params.set("contenedor_id", filtros.contenedor_id);
+  if (filtros?.patio_id) params.set("patio_id", filtros.patio_id);
+  const query = params.toString();
+  return request<ServicioContenedor[]>(`/api/servicios${query ? `?${query}` : ""}`, { token });
+}
+
+export async function iniciarServicio(token: string, servicioId: string): Promise<ServicioContenedor> {
+  return request<ServicioContenedor>(`/api/servicios/${servicioId}/iniciar`, {
+    method: "POST",
+    token,
+  });
+}
+
+export async function terminarServicio(
+  token: string,
+  servicioId: string,
+  payload: { notas?: string; evidencias?: string[] }
+): Promise<ServicioContenedor> {
+  return request<ServicioContenedor>(`/api/servicios/${servicioId}/terminar`, {
+    method: "POST",
+    token,
+    body: JSON.stringify(payload),
+  });
+}
+
