@@ -15,20 +15,20 @@ export const ROLES_POR_RUTA: Record<string, string[]> = {
   // `GET /api/patios` no exige rol, pero la página existe para administrar el patio y no
   // le sirve a un cliente. Restricción de interfaz, no de seguridad.
   "/patios": [...ROLES_STAFF],
-  // `GET /api/patios/{id}/mapa` usa los mismos roles que _ROLES_ESCRITURA y operador_grua.
-  "/mapa": ["operador_grua", ...ROLES_STAFF],
+  // `_ROLES_MAPA` y `POST /api/movimientos`.
+  "/mapa": [...ROLES_STAFF],
   // `POST /api/contenedores` usa _ROLES_ESCRITURA.
   "/contenedores": [...ROLES_STAFF],
   // `POST /api/movimientos` usa _ROLES_ESCRITURA.
   "/movimientos": [...ROLES_STAFF],
   // `POST /api/ubicaciones/sugerir` usa _ROLES.
   "/ubicaciones/sugerir": [...ROLES_STAFF],
-  // `POST /api/contenedores/verificar-pin` usa _ROLES_ESCRITURA.
-  "/porteria": [...ROLES_STAFF],
-  // Cola de planeación, consume `GET /api/contenedores` con scoping de staff.
-  "/salidas": [...ROLES_STAFF],
-  // Servicios: lista de órdenes, inicia/termina - cuadrilla, operador_grua, operador, supervisor, admin
-  "/servicios": ["cuadrilla", "operador_grua", ...ROLES_STAFF],
+  // verificar-pin acepta `_ROLES_ESCRITURA` y `guardia` (Task 3).
+  "/porteria": ["guardia", ...ROLES_STAFF],
+  // GET /api/contenedores acepta cualquier sesión; RLS filtra por patio.
+  "/salidas": ["despachador", ...ROLES_STAFF],
+  // `_ROLES_GESTION_ORDEN` de `backend/app/api/servicios.py`.
+  "/servicios": ["cuadrilla", "supervisor", "admin"],
   // `GET /api/reportes/...` usa require_roles(OPERADOR, SUPERVISOR, ADMIN, CLIENTE).
   "/reportes": [...ROLES_STAFF, "cliente"],
   // require_roles(RolUsuario.ADMIN).
@@ -39,12 +39,21 @@ export const ROLES_POR_RUTA: Record<string, string[]> = {
   "/mis-contenedores": ["cliente"],
 };
 
+const INICIO_POR_ROL: Record<string, string> = {
+  cliente: "/mis-contenedores",
+  cuadrilla: "/servicios",
+  guardia: "/porteria",
+  despachador: "/salidas",
+  operador: "/patios",
+  supervisor: "/patios",
+  admin: "/patios",
+};
+
 /**
- * Ruta de inicio de cada rol. La usan la pantalla de acceso denegado, la raíz `/` y el
- * destino después de iniciar sesión.
+ * Ruta de inicio de cada rol. La usan el login, la raíz `/` y la pantalla de acceso
+ * denegado. Un rol sin pantalla propia (hoy `operador_grua`) o desconocido va a `/inicio`,
+ * que solo exige sesión, para no caer en un acceso denegado que regresa a otro.
  */
 export function homePorRol(rol: string): string {
-  if (rol === "cliente") return "/mis-contenedores";
-  if (rol === "cuadrilla") return "/servicios";
-  return "/patios";
+  return INICIO_POR_ROL[rol] ?? "/inicio";
 }

@@ -65,12 +65,13 @@ describe("Sidebar", () => {
     expect(screen.getByRole("link", { name: "Clientes" })).toBeInTheDocument();
   });
 
-  it("hides the whole Cliente section from staff", () => {
+  it("hides client-only routes from staff but allows reportes", () => {
     mockSession("operador");
     render(<Sidebar />);
 
-    expect(screen.queryByRole("heading", { name: "Cliente" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Reportes" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Mis contenedores" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Solicitar entrada" })).not.toBeInTheDocument();
   });
 
   it("shows a cliente only its own section", () => {
