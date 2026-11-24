@@ -21,6 +21,7 @@ const DETALLE: DetalleTiraData = {
         tamano: "40",
         peso_kg: 28000,
         estado: "ubicado",
+        fecha_ingreso: "2026-01-01T00:00:00Z",
       },
     },
     {
