@@ -75,7 +75,7 @@ export function PanelCuadrilla() {
 
   return (
     <div className={styles.container}>
-      {error && <Alert variant="error">{error}</Alert>}
+      {error && <Alert tone="danger">{error}</Alert>}
       {servicios.length === 0 ? (
         <p>No hay servicios registrados para hoy.</p>
       ) : (
@@ -138,7 +138,7 @@ export function PanelCuadrilla() {
                           <Button onClick={() => handleTerminar(s.id, requiereEvidencia)}>
                             Confirmar término
                           </Button>
-                          <Button variant="outline" onClick={() => setTerminandoId(null)}>
+                          <Button variant="secondary" onClick={() => setTerminandoId(null)}>
                             Cancelar
                           </Button>
                         </div>
