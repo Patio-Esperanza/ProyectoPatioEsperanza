@@ -51,8 +51,8 @@ docker/initdb/            Scripts de inicialización de la base de datos
 
 Ambas suites corren en verde al momento de escribir este documento.
 
-- Backend: `82 passed` (`cd backend && pytest`)
-- Frontend: `100 passed` en 24 archivos (`cd frontend && npx vitest run`)
+- Backend: `218 passed` (`cd backend && pytest`)
+- Frontend: `240 passed` en 42 archivos (`cd frontend && npx vitest run`)
 - `cd frontend && npx tsc --noEmit` sale limpio.
 
 `npm run lint` no funciona: el repositorio nunca tuvo `.eslintrc` y `next lint` pide
@@ -308,9 +308,7 @@ De la spec del fix de RLS:
   con una sesión nueva de SQLAlchemy sobre la misma conexión física. Cualquier código que
   asigne GUC debe hacerlo en todos los requests, no solo en algunos.
 - No existe endpoint de alta del primer usuario admin. Se siembra manualmente con `psql`.
-- Los roles `guardia` y `despachador` existen en `RolUsuario` pero ningún endpoint los
-  acepta para escribir. Un usuario con esos roles se autentica y no puede hacer nada, ni
-  tiene una sola ruta propia en la navegación.
+- Los roles operacionales (`guardia`, `despachador`, `cuadrilla`) disponen de rutas propias de inicio, permisos y vistas especializadas (`/porteria`, `/salidas`, `/servicios`).
 - `globals.css` conserva alias temporales de los nombres viejos de variables
   (`--azul`, `--surface`, `--border`, ...) porque las páginas sin migrar los usan. Se
   borran al cerrar la Fase 2 del rediseño.
