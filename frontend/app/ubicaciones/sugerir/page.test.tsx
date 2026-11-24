@@ -48,14 +48,14 @@ describe("SugerirUbicacionPage", () => {
     render(<SugerirUbicacionPage />);
 
     await user.selectOptions(await screen.findByLabelText("Patio"), "p1");
-    await user.type(screen.getByLabelText("ID de contenedor"), "c1");
-    await user.type(screen.getByLabelText("ID de ubicación de referencia"), "u0");
+    await user.type(screen.getByLabelText("Número de contenedor"), "c1");
+    await user.type(screen.getByLabelText("Código de ubicación de referencia"), "u0");
     await user.click(screen.getByRole("button", { name: "Sugerir" }));
 
     expect(sugerirUbicacion).toHaveBeenCalledWith("token", {
       patio_id: "p1",
-      contenedor_id: "c1",
-      punto_referencia_ubicacion_id: "u0",
+      numero_contenedor: "c1",
+      punto_referencia_codigo: "u0",
     });
     expect(await screen.findByText(/A1-T1-S1-N1/)).toBeInTheDocument();
     expect(screen.getByText(/costo 1.30/)).toBeInTheDocument();
@@ -71,8 +71,8 @@ describe("SugerirUbicacionPage", () => {
     render(<SugerirUbicacionPage />);
 
     await user.selectOptions(await screen.findByLabelText("Patio"), "p1");
-    await user.type(screen.getByLabelText("ID de contenedor"), "c1");
-    await user.type(screen.getByLabelText("ID de ubicación de referencia"), "u0");
+    await user.type(screen.getByLabelText("Número de contenedor"), "c1");
+    await user.type(screen.getByLabelText("Código de ubicación de referencia"), "u0");
     await user.click(screen.getByRole("button", { name: "Sugerir" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
