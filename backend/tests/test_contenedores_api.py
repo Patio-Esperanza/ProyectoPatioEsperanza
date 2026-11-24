@@ -604,6 +604,59 @@ async def test_cliente_no_puede_verificar_pin(client, db_session, enviados_pin):
 
 
 @pytest.mark.anyio
+async def test_guardia_verifica_pin_de_su_patio(client, db_session, enviados_pin):
+    contenedor_id, _ = await _crear_solicitud_con_pin(
+        client, db_session, "00000000-0000-0000-0000-0000000000c1", "GUA111111GU1", "CSQU3054001"
+    )
+    result = await db_session.execute(select(Contenedor).where(Contenedor.id == contenedor_id))
+    contenedor = result.scalar_one()
+    await _crear_usuario_autenticado(db_session)
+    token = _token(RolUsuario.GUARDIA, patios=[str(contenedor.patio_id)])
+
+    response = await client.post(
+        "/api/contenedores/verificar-pin",
+        json={"numero_contenedor": "CSQU3054001", "pin": contenedor.pin_confirmacion},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["estado"] == "en_porteria"
+
+
+@pytest.mark.anyio
+async def test_guardia_sin_patios_no_verifica_pin(client, db_session, enviados_pin):
+    await _crear_usuario_autenticado(db_session)
+    token = _token(RolUsuario.GUARDIA)
+
+    response = await client.post(
+        "/api/contenedores/verificar-pin",
+        json={"numero_contenedor": "CSQU3054001", "pin": "1234"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.anyio
+async def test_guardia_de_otro_patio_recibe_404(client, db_session, enviados_pin):
+    contenedor_id, _ = await _crear_solicitud_con_pin(
+        client, db_session, "00000000-0000-0000-0000-0000000000c2", "GUA222222GU2", "CSQU3054207"
+    )
+    result = await db_session.execute(select(Contenedor).where(Contenedor.id == contenedor_id))
+    contenedor = result.scalar_one()
+    await _crear_usuario_autenticado(db_session)
+    token = _token(RolUsuario.GUARDIA, patios=[str(uuid.uuid4())])
+
+    response = await client.post(
+        "/api/contenedores/verificar-pin",
+        json={"numero_contenedor": "CSQU3054207", "pin": contenedor.pin_confirmacion},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.anyio
 async def test_listar_contenedores_cliente_solo_ve_los_suyos(client, db_session, enviados_pin):
     from app.models.cliente import Cliente
     from app.models.enums import TipoCliente
