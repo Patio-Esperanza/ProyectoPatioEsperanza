@@ -947,3 +947,56 @@ async def test_listar_contenedores_filtra_los_que_no_tienen_ubicacion(client, db
     assert response.status_code == 200
     numeros = [c["numero_contenedor"] for c in response.json()]
     assert numeros == ["AAAU0000001"]
+
+
+@pytest.mark.anyio
+async def test_guardia_verifica_pin_de_su_patio(client, db_session, enviados_pin):
+    contenedor_id, _ = await _crear_solicitud_con_pin(
+        client, db_session, "00000000-0000-0000-0000-0000000000c1", "GUA111111GU1", "CSQU3054017"
+    )
+    result = await db_session.execute(select(Contenedor).where(Contenedor.id == contenedor_id))
+    contenedor = result.scalar_one()
+    await _crear_usuario_autenticado(db_session)
+    token = _token(RolUsuario.GUARDIA, patios=[str(contenedor.patio_id)])
+
+    response = await client.post(
+        "/api/contenedores/verificar-pin",
+        json={"numero_contenedor": "CSQU3054017", "pin": contenedor.pin_confirmacion},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["estado"] == "en_porteria"
+
+
+@pytest.mark.anyio
+async def test_guardia_sin_patios_no_verifica_pin(client, db_session, enviados_pin):
+    await _crear_usuario_autenticado(db_session)
+    token = _token(RolUsuario.GUARDIA)
+
+    response = await client.post(
+        "/api/contenedores/verificar-pin",
+        json={"numero_contenedor": "CSQU3054017", "pin": "1234"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.anyio
+async def test_guardia_de_otro_patio_recibe_404(client, db_session, enviados_pin):
+    contenedor_id, _ = await _crear_solicitud_con_pin(
+        client, db_session, "00000000-0000-0000-0000-0000000000c2", "GUA222222GU2", "CSQU3054022"
+    )
+    result = await db_session.execute(select(Contenedor).where(Contenedor.id == contenedor_id))
+    contenedor = result.scalar_one()
+    await _crear_usuario_autenticado(db_session)
+    token = _token(RolUsuario.GUARDIA, patios=[str(uuid.uuid4())])
+
+    response = await client.post(
+        "/api/contenedores/verificar-pin",
+        json={"numero_contenedor": "CSQU3054022", "pin": contenedor.pin_confirmacion},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 404

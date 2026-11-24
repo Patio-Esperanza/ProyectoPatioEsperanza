@@ -28,6 +28,7 @@ from app.schemas.contenedor import (
 router = APIRouter()
 
 _ROLES_ESCRITURA = (RolUsuario.OPERADOR, RolUsuario.SUPERVISOR, RolUsuario.ADMIN)
+_ROLES_VERIFICAR_PIN = (*_ROLES_ESCRITURA, RolUsuario.GUARDIA)
 
 
 @router.get("", response_model=list[ContenedorOut])
@@ -174,16 +175,23 @@ async def solicitar_contenedor(
     return contenedor
 
 
+_ROLES_VERIFICAR_PIN = (*_ROLES_ESCRITURA, RolUsuario.GUARDIA)
+
+
 @router.post("/verificar-pin", response_model=ContenedorOut)
 async def verificar_pin(
     payload: PinVerificar,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    user: CurrentUser = Depends(require_roles(*_ROLES_ESCRITURA)),
+    user: CurrentUser = Depends(require_roles(*_ROLES_VERIFICAR_PIN)),
 ) -> Contenedor:
-    result = await db.execute(
-        select(Contenedor).where(Contenedor.numero_contenedor == payload.numero_contenedor)
-    )
+    if user.rol == RolUsuario.GUARDIA and not user.patios:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Guardia sin patios asignados")
+
+    query = select(Contenedor).where(Contenedor.numero_contenedor == payload.numero_contenedor)
+    if user.rol == RolUsuario.GUARDIA:
+        query = query.where(Contenedor.patio_id.in_(user.patios))
+    result = await db.execute(query)
     contenedor = result.scalar_one_or_none()
     if contenedor is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Contenedor no encontrado")
