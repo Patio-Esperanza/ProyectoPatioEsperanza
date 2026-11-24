@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { homePorRol } from "@/lib/rutas";
 
 export default function HomePage() {
   const { user, ready } = useAuth();
@@ -10,7 +11,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!ready) return;
-    router.replace(user ? "/patios" : "/login");
+    router.replace(user ? homePorRol(user.rol) : "/login");
   }, [ready, user, router]);
 
   return null;

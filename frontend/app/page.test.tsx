@@ -17,7 +17,7 @@ beforeEach(() => {
 });
 
 describe("HomePage", () => {
-  it("redirects to /patios when authenticated", () => {
+  it("redirects to /patios when authenticated as admin", () => {
     vi.mocked(useAuth).mockReturnValue({
       tokenExpiresAt: null,
       proximaExpiracion: false,
@@ -33,6 +33,42 @@ describe("HomePage", () => {
     render(<HomePage />);
 
     expect(replaceMock).toHaveBeenCalledWith("/patios");
+  });
+
+  it("redirects to /mis-contenedores when authenticated as cliente", () => {
+    vi.mocked(useAuth).mockReturnValue({
+      tokenExpiresAt: null,
+      proximaExpiracion: false,
+      errorRefresh: false,
+      renovarSesion: vi.fn(),
+      user: { id: "1", rol: "cliente", patios: [] },
+      token: "t",
+      ready: true,
+      setToken: vi.fn(),
+      logout: vi.fn(),
+    });
+
+    render(<HomePage />);
+
+    expect(replaceMock).toHaveBeenCalledWith("/mis-contenedores");
+  });
+
+  it("redirects to /porteria when authenticated as guardia", () => {
+    vi.mocked(useAuth).mockReturnValue({
+      tokenExpiresAt: null,
+      proximaExpiracion: false,
+      errorRefresh: false,
+      renovarSesion: vi.fn(),
+      user: { id: "1", rol: "guardia", patios: [] },
+      token: "t",
+      ready: true,
+      setToken: vi.fn(),
+      logout: vi.fn(),
+    });
+
+    render(<HomePage />);
+
+    expect(replaceMock).toHaveBeenCalledWith("/porteria");
   });
 
   it("redirects to /login when not authenticated", () => {

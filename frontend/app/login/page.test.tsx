@@ -43,6 +43,43 @@ describe("LoginPage", () => {
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/patios"));
   });
 
+  it("sends a cuadrilla to Servicios after login", async () => {
+    const user = userEvent.setup();
+    const payload = { sub: "usr-2", rol: "cuadrilla", patios: [], iat: 0, exp: 9999999999 };
+    const token = `${btoa("{}")}.${btoa(JSON.stringify(payload))}.sig`;
+    vi.mocked(login).mockResolvedValue({ access_token: token, token_type: "bearer" });
+
+    render(
+      <AuthProvider>
+        <LoginPage />
+      </AuthProvider>
+    );
+
+    await user.type(screen.getByLabelText("Correo"), "cuadrilla@patio.mx");
+    await user.type(screen.getByLabelText("Contraseña"), "clave123");
+    await user.click(screen.getByRole("button", { name: "Entrar" }));
+
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/servicios"));
+  });
+
+  it("prefers the saved return route over the role home", async () => {
+    const user = userEvent.setup();
+    sessionStorage.setItem("patio_esperanza_ruta_retorno", "/contenedores");
+    vi.mocked(login).mockResolvedValue({ access_token: FAKE_TOKEN, token_type: "bearer" });
+
+    render(
+      <AuthProvider>
+        <LoginPage />
+      </AuthProvider>
+    );
+
+    await user.type(screen.getByLabelText("Correo"), "admin@patio.mx");
+    await user.type(screen.getByLabelText("Contraseña"), "clave123");
+    await user.click(screen.getByRole("button", { name: "Entrar" }));
+
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/contenedores"));
+  });
+
   it("shows the backend error message on failed login", async () => {
     const user = userEvent.setup();
     vi.mocked(login).mockRejectedValue(new ApiError(401, "Credenciales inválidas"));

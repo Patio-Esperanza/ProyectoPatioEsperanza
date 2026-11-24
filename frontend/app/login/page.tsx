@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { login, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { tomarRutaRetorno } from "@/lib/ruta-retorno";
+import { homePorRol } from "@/lib/rutas";
+import { decodeTokenSafe } from "@/lib/jwt";
 import { Alert, Button, Field } from "@/components/ui";
 import styles from "./page.module.css";
 
@@ -40,7 +42,9 @@ export default function LoginPage() {
     try {
       const { access_token } = await login(email, password);
       setToken(access_token);
-      router.push(tomarRutaRetorno() ?? "/patios");
+      // `user` del contexto aún no refleja el token nuevo en este manejador.
+      const rol = decodeTokenSafe(access_token)?.rol ?? "";
+      router.push(tomarRutaRetorno() ?? homePorRol(rol));
     } catch (err) {
       setError(mensajeDeError(err));
     } finally {
