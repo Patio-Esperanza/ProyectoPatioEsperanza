@@ -8,6 +8,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import decode_access_token
+from app.core.socio_security import CurrentSocio, verificar_api_key
 from app.db import get_db
 from app.models.enums import RolUsuario
 from app.models.usuario import Usuario
