@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import zona_horaria_app
 from app.db import SessionLocal
 from app.jobs.corte_diario import ejecutar_corte_diario
+from app.jobs.webhooks_socio import ejecutar_dispatch_webhooks_socio
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +27,15 @@ def iniciar_scheduler() -> None:
         id="corte_diario",
         replace_existing=True,
     )
+    # Add webhook dispatch job every minute
+    scheduler.add_job(
+        _ejecutar_dispatch_webhooks_socio_wrapper,
+        trigger=CronTrigger(second=0, timezone=zona_horaria_app()),
+        id="dispatch_webhooks_socio",
+        replace_existing=True,
+    )
     scheduler.start()
-    logger.info("Scheduler iniciado con job corte_diario a las 00:10")
+    logger.info("Scheduler iniciado con job corte_diario y dispatch_webhooks_socio")
 
 
 def apagar_scheduler() -> None:
@@ -48,5 +56,17 @@ async def _ejecutar_corte_diario_wrapper() -> None:
             logger.info("Corte diario ejecutado exitosamente")
         except Exception:
             logger.exception("Error ejecutando corte diario")
+            await db.rollback()
+            raise
+
+
+async def _ejecutar_dispatch_webhooks_socio_wrapper() -> None:
+    """Wrapper that creates its own DB session for webhook dispatch execution."""
+    async with SessionLocal() as db:
+        try:
+            await ejecutar_dispatch_webhooks_socio(db)
+            await db.commit()
+        except Exception:
+            logger.exception("Error ejecutando dispatch webhooks socio")
             await db.rollback()
             raise

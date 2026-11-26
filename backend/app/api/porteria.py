@@ -16,6 +16,7 @@ from app.schemas.contenedor import ContenedorOut
 from app.schemas.porteria import PorteriaIngresoCreate, PorteriaIngresoResponse
 from app.schemas.ubicacion import SugerenciaUbicacionResponse
 from app.services.ubicacion_algoritmo import sugerir_ubicaciones_multiples
+from app.jobs.webhooks_socio import registrar_evento_socio
 
 router = APIRouter()
 
@@ -118,6 +119,7 @@ async def registrar_ingreso_porteria(
         contenedor.sellos = normalizar_sellos(payload.sellos)
     contenedor.pin_confirmacion = None
 
+    await registrar_evento_socio(db, contenedor, "contenedor.ingresado")
     await db.flush()
 
     patio_result = await db.execute(select(Patio).where(Patio.id == contenedor.patio_id))

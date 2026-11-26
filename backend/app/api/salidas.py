@@ -18,6 +18,7 @@ from app.schemas.salidas import (
     SalidaListoCreate,
     SalidaListoResponse,
 )
+from app.jobs.webhooks_socio import registrar_evento_socio
 
 router = APIRouter()
 
@@ -78,6 +79,8 @@ async def despachar_contenedor(
     contenedor.estado = EstadoContenedor.DESPACHADO
     contenedor.ubicacion_id = None
     contenedor.fecha_salida = func.now()
+
+    await registrar_evento_socio(db, contenedor, "contenedor.despachado")
 
     movimiento = Movimiento(
         contenedor_id=contenedor.id,

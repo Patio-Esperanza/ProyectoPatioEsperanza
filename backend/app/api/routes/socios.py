@@ -15,6 +15,7 @@ from app.models.contenedor import Contenedor
 from app.models.enums import EstadoContenedor, TamanoContenedor, TipoContenedor, TipoCliente
 from app.schemas.contenedor import ContenedorOut
 from app.services.socio_service import resolver_o_crear_cliente
+from app.jobs.webhooks_socio import registrar_evento_socio
 
 router = APIRouter()
 
@@ -223,6 +224,7 @@ async def cancelar_solicitud_ingreso_socio(
     contenedor.estado = EstadoContenedor.RECHAZADO
     contenedor.pin_confirmacion = None
 
+    await registrar_evento_socio(db, contenedor, "contenedor.rechazado")
     await db.commit()
     await db.refresh(contenedor)
     return contenedor
