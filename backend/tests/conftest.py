@@ -27,7 +27,14 @@ BACKEND_DIR = Path(__file__).resolve().parents[1]
 
 @pytest.fixture(scope="session", autouse=True)
 def apply_migrations():
-    env = {**os.environ, "PYTHONPATH": str(BACKEND_DIR)}
+    test_db_url_async = "postgresql+asyncpg://patio_app:patio_app@localhost:5433/patio_test"
+    test_db_url_sync = "postgresql+asyncpg://patio:patio@localhost:5433/patio_test"
+    env = {
+        **os.environ,
+        "PYTHONPATH": str(BACKEND_DIR),
+        "DATABASE_URL": test_db_url_async,
+        "MIGRATIONS_DATABASE_URL": test_db_url_sync,
+    }
     subprocess.run(
         [sys.executable, "-m", "alembic", "upgrade", "head"],
         cwd=BACKEND_DIR,

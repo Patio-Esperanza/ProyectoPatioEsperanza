@@ -2,7 +2,7 @@ import datetime
 import uuid
 
 from sqlalchemy import Boolean, CheckConstraint, DateTime, Enum, ForeignKey, Index, Integer, String, Text, and_, Table, Column, Date
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -49,6 +49,13 @@ class Contenedor(Base):
     pin_salida_intentos: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     fecha_salida: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ingresado_en: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    origen: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    credencial_socio_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("credenciales_socio.id"), nullable=True)
+    idempotency_key: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    referencia_externa: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    datos_aduana: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    transporte_esperado: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    peso_por_confirmar: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (
@@ -66,6 +73,13 @@ class Contenedor(Base):
                 estado != EstadoContenedor.DESPACHADO,
                 estado != EstadoContenedor.RECHAZADO,
             ),
+        ),
+        Index(
+            "uq_contenedor_socio_idempotency",
+            "credencial_socio_id",
+            "idempotency_key",
+            unique=True,
+            postgresql_where=(idempotency_key.is_not(None)),
         ),
         CheckConstraint(
             "estado != 'despachado' OR ubicacion_id IS NULL",
