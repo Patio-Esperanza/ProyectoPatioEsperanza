@@ -15,6 +15,7 @@ from app.api.routes import (
     porteria,
     reportes,
     salidas,
+    socios,
     tiras,
     ubicacion_grua,
     ubicaciones,
@@ -72,5 +73,6 @@ app.include_router(porteria.router, prefix="/api/porteria", tags=["porteria"])
 app.include_router(buscar.router, prefix="/api/buscar", tags=["buscar"])
 app.include_router(reubicar.router, prefix="/api", tags=["reubicar"])
 app.include_router(salidas.router, prefix="/api", tags=["salidas"])
+app.include_router(socios.router, prefix="/api/socios", tags=["socios"])
 app.include_router(ubicacion_grua.router, prefix="/api", tags=["ubicacion_grua"])
 app.include_router(servicios.router, prefix="/api", tags=["servicios"])

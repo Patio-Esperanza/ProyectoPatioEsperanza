@@ -74,12 +74,22 @@ async def registrar_ingreso_porteria(
     if not payload.evidencias:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Se requiere al menos una evidencia fotográfica")
 
+    placas_coinciden = None
+    if contenedor.transporte_esperado and isinstance(contenedor.transporte_esperado, dict):
+        esperadas = contenedor.transporte_esperado.get("placas")
+        if esperadas and payload.placas:
+            placas_coinciden = esperadas.strip().upper() == payload.placas.strip().upper()
+
+    danos_dict = payload.danos or {}
+    if placas_coinciden is not None:
+        danos_dict["placas_coinciden"] = placas_coinciden
+
     inspeccion = Inspeccion(
         contenedor_id=contenedor.id,
         placas=payload.placas,
         operador=payload.operador,
         sellos=payload.sellos or contenedor.sellos,
-        danos=payload.danos,
+        danos=danos_dict,
         notas=payload.notas,
     )
     db.add(inspeccion)

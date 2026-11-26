@@ -91,6 +91,7 @@ class ContenedorOut(BaseModel):
     )
     fecha_deseada_salida: datetime.datetime | None = None
     fecha_salida: datetime.datetime | None = None
+    transporte_esperado: dict | None = None
     pin_confirmacion: str | None = Field(default=None, exclude=True)
 
     @computed_field  # type: ignore[prop-decorator]
